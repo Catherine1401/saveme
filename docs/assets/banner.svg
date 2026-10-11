@@ -8,7 +8,6 @@
     </linearGradient>
   </defs>
   <rect width="840" height="188" rx="20" fill="#0d1117"/>
-  <rect x="1" y="1" width="838" height="186" rx="19" fill="none" stroke="#30363d"/>
   <path d="M166 84V70a20 20 0 0 1 40 0v14" fill="none" stroke="#a7f3d0" stroke-width="8"/>
   <rect x="152" y="82" width="68" height="48" rx="10" fill="#a7f3d0"/>
   <circle cx="186" cy="102" r="5" fill="#0d1117"/>

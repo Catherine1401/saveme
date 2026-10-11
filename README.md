@@ -4,7 +4,6 @@
 
 <p align="center">
   <a href="docs/assets/demo.mp4"><img src="docs/assets/demo.gif" width="720" alt="Full demo: domains, daily schedule, 12-hour lock and reopening the client." /></a>
-  <br /><sub><a href="docs/assets/demo.mp4">Watch video</a> · Demo mode, no network blocking</sub>
 </p>
 
 ## Install
