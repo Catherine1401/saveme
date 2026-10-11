@@ -242,3 +242,7 @@ The active-lock countdown uses large seven-segment digits centered in the
 terminal with heavy strokes and seven visible rows for every digit; small
 terminals use ordinary text. Confirmation displays the four
 real characters in separate cells, using your existing terminal font.
+
+Outside input screens, `q` returns one level. From the main menu or active-lock
+screen, it exits the TUI. When entering a domain, time or confirmation code,
+`q` does not navigate or quit. Use Esc to cancel input.

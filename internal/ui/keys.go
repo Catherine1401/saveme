@@ -33,6 +33,9 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 	if key.String() == vimBack && !key.Paste && m.screen != mainScreen && m.screen != domainEdit && m.screen != windowEdit && m.screen != confirmation {
 		return m.back()
 	}
+	if key.String() == shortQuit && !key.Paste && m.screen != domainEdit && m.screen != windowEdit && m.screen != confirmation {
+		return m.back()
+	}
 	if m.screen == confirmation {
 		m.vim.prefix = false
 		return m.confirmKey(key)

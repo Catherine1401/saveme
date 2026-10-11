@@ -77,7 +77,7 @@ func (m Model) screenView() string {
 	case domainEdit:
 		return m.domainEditView()
 	case rangeList:
-		const header, footer = " Select duration\n\n", "\n ↑↓ / 1–9 / Enter select; Esc back\n"
+		const header, footer = " Select duration\n\n", "\n ↑↓ / 1–9 / Enter select; q/Esc back\n"
 		body := header
 		for index, choice := range durationChoices() {
 			body += m.row(index, choice.Label)
@@ -90,7 +90,7 @@ func (m Model) screenView() string {
 	case confirmation:
 		return m.confirmView()
 	case lastWindow:
-		const text = " Deleting the last window removes the schedule.\n Enter confirm; Esc back\n"
+		const text = " Deleting the last window removes the schedule.\n Enter confirm; q/Esc back\n"
 		return text
 	}
 
@@ -130,7 +130,7 @@ func (m Model) mainView() string {
 }
 
 func (m Model) domainListView() string {
-	const header, footer, empty = " Domains include subdomains; facebook.com blocks only itself and www\n\n", "\n a add; e edit; d delete; ↑↓ select; Esc back\n", " No domains.\n"
+	const header, footer, empty = " Domains include subdomains; facebook.com blocks only itself and www\n\n", "\n a add; e edit; d delete; ↑↓ select; q/Esc back\n", " No domains.\n"
 	const zero = 0
 	body := header
 	if len(m.status.State.Domains) == zero {
@@ -141,11 +141,11 @@ func (m Model) domainListView() string {
 	}
 	const one = 1
 	if len(m.status.State.Domains) == zero {
-		const unavailable = "\n a add; e edit [disabled: no domains]; d delete [disabled: no domains]; Esc back\n"
+		const unavailable = "\n a add; e edit [disabled: no domains]; d delete [disabled: no domains]; q/Esc back\n"
 		return body + m.ink(unavailable, toneMuted, false)
 	}
 	if len(m.status.State.Domains) == one && m.status.State.Lock != nil {
-		const unavailable = "\n a add; e edit; d delete [disabled: last domain is required by the schedule]; ↑↓ select; Esc back\n"
+		const unavailable = "\n a add; e edit; d delete [disabled: last domain is required by the schedule]; ↑↓ select; q/Esc back\n"
 		return body + m.ink(unavailable, toneMuted, false)
 	}
 	return body + footer
@@ -161,7 +161,7 @@ func (m Model) domainEditView() string {
 }
 
 func (m Model) windowListView() string {
-	const header, footer, format = " Daily schedule\n\n", "\n a add; e edit; d delete; ↑↓ select; Esc back\n", "%s to %s — %s"
+	const header, footer, format = " Daily schedule\n\n", "\n a add; e edit; d delete; ↑↓ select; q/Esc back\n", "%s to %s — %s"
 	const active, waiting = "active", "waiting"
 	body := header
 	if m.status.State.Lock == nil {

@@ -151,7 +151,7 @@ func (m Model) confirmCode() string {
 
 func (m Model) hint(line string) string {
 	const space = " "
-	const enter, escape, upDown, leftRight, quit = "Enter", "Esc", "↑↓", "←→", "q"
+	const enter, escape, back, upDown, leftRight, quit = "Enter", "Esc", "q/Esc", "↑↓", "←→", "q"
 	const add, edit, remove, menuDigits, durationDigits = "a", "e", "d", "1–3", "1–9"
 	const vimVertical, vimHorizontal = "j/k / ↑↓", "h/l / ←→"
 	const verticalKeys, horizontalKeys, backKey, openKey = "j/k", "h/l", "h", "l"
@@ -169,7 +169,7 @@ func (m Model) hint(line string) string {
 	for index, word := range words {
 		color, bold := toneMuted, false
 		switch word {
-		case enter, escape, upDown, leftRight, quit, add, edit, remove, menuDigits, durationDigits, verticalKeys, horizontalKeys, backKey, openKey:
+		case enter, escape, back, upDown, leftRight, quit, add, edit, remove, menuDigits, durationDigits, verticalKeys, horizontalKeys, backKey, openKey:
 			color, bold = toneAccent, true
 		}
 		words[index] = m.ink(word, color, bold)
