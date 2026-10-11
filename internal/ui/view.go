@@ -46,13 +46,7 @@ func (m Model) View() string {
 		const loading = " Connecting to daemon…\n q quit\n"
 		body = space + m.spinner() + loading
 	} else if m.status.Active {
-		const infinite, remaining, message = " Locked with no release time.\n", " Locked: %s remaining\n", "\n Website blocking is active.\n\n q quit\n"
-		const zero = 0
-		body = infinite
-		if m.status.EndAt != zero {
-			body = fmt.Sprintf(remaining, countdown(m.status.EndAt-m.status.Now))
-		}
-		body += message
+		return m.lockedView()
 	} else if !m.status.OK {
 		const fault = " Changes unavailable.\n q quit\n"
 		body = fault
