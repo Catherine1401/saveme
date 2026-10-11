@@ -144,21 +144,10 @@ Inspect the error and existing files before retrying. Do not delete saved state.
 
 ## Maintainers: release a version
 
-```sh
-make test check
-bash scripts/release.sh v0.1.0
-bash scripts/install_test.sh dist/v0.1.0
-cd dist/v0.1.0
-sha256sum --check checksums.txt
-```
+Follow [the release flow](release.md) for source isolation, exact commit approval,
+canonical `vX.Y.Z` tags, publication, downloaded-asset verification, and handoff.
+Package only the verified committed SHA from a clean checkout. A local build or
+successful bootstrap fixture does not prove that GitHub published the release.
 
-Each archive includes both static Go binaries, deployment scripts, service,
-configuration and policy templates, MIT license and `VERSION`. The release
-script does not publish anything. Bootstrap tests use real bundles with curl
-and sudo fixtures; they do not deploy to the machine running those tests.
-
-After approving and committing a version, create and push its stable `vX.Y.Z`
-tag. The Release workflow runs tests and vet, checks Bash syntax, builds both
-architectures and publishes the archives with `checksums.txt`. Use a new tag for
-each release. Package-manager channels are not advertised until packages actually
-exist. Distribution packages and automatic self-updates are separate future work.
+Use a new canonical tag for each release. Distribution packages and automatic
+self-updates remain separate work; do not advertise channels before they exist.

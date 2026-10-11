@@ -1,6 +1,8 @@
 # Agent entry point
 
 - Before code exploration, read every document in `context/` and `.docs/context/` when present. Then read `.docs/flow.md`, `.docs/trace.md` and `.docs/handoff.md`. If local handoff files are absent, read `docs/setup.md`, `docs/protocol.md` and `docs/install.md`; reconstruct missing decisions from the current task and ask only for decision-critical gaps.
+- For release work, read `docs/release.md` and follow its gates. Release tags always use `vX.Y.Z`; a version number without `v` is not permission to create an unprefixed tag.
+- Build and publish only from a clean checkout of the verified committed SHA. Verify the terminal workflow result and downloaded assets before reporting a release complete; keep unrelated pending work out of the release.
 - Compare the context branch/head with Git status and changed paths. Revalidate affected claims; distinguish historical evidence, current tests, skipped tests and unverified behavior. Never interpret archived reports as current status.
 - Before changing code, map the assigned requirement to its flow, existing implementation and verification in `.docs/trace.md`. Search for equivalent logic and reuse it. Do not implement unrelated TODOs.
 - Preserve these decisions: the daemon owns validation and enforcement; save a confirmed lock before enforcing it; keep existing locks closed while NTP is untrusted; block `facebook.com` and `www.facebook.com` for the `facebook.com` entry while allowing other subdomains unless separately listed; reject updates while any stored lock exists.
