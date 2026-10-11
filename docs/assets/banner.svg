@@ -1,14 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="840" height="188" viewBox="0 0 840 188" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="248" viewBox="0 0 840 248" role="img" aria-labelledby="title desc">
   <title id="title">saveme</title>
-  <desc id="desc">Mint and lavender pixel lettering with a lock, using the terminal UI letter shapes.</desc>
+  <desc id="desc">Mint, lavender, pink and amber pixel lettering with a lock and orbital accents, using the terminal UI letter shapes.</desc>
   <defs>
     <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
       <stop stop-color="#a7f3d0"/>
-      <stop offset="1" stop-color="#c4b5fd"/>
+      <stop offset="0.38" stop-color="#a5b4fc"/>
+      <stop offset="0.72" stop-color="#f0abfc"/>
+      <stop offset="1" stop-color="#fcd34d"/>
     </linearGradient>
+    <radialGradient id="halo">
+      <stop stop-color="#8b5cf6" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="edge" x2="1" y2="1">
+      <stop stop-color="#6ee7b7"/>
+      <stop offset="0.5" stop-color="#c084fc"/>
+      <stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#c4b5fd" stroke-opacity="0.06"/>
+    </pattern>
   </defs>
-  <rect width="840" height="188" rx="20" fill="#0d1117"/>
-  <rect x="1" y="1" width="838" height="186" rx="19" fill="none" stroke="#30363d"/>
+  <rect width="840" height="248" rx="24" fill="#0d1117"/>
+  <rect width="840" height="248" rx="24" fill="url(#grid)"/>
+  <ellipse cx="450" cy="125" rx="390" ry="180" fill="url(#halo)"/>
+  <rect x="1" y="1" width="838" height="246" rx="23" fill="none" stroke="url(#edge)" stroke-opacity="0.65"/>
+  <g fill="none" stroke-width="1.5">
+    <ellipse cx="420" cy="124" rx="362" ry="86" stroke="#c084fc" stroke-opacity="0.2" transform="rotate(-9 420 124)"/>
+    <ellipse cx="420" cy="124" rx="362" ry="86" stroke="#6ee7b7" stroke-opacity="0.14" transform="rotate(9 420 124)"/>
+  </g>
+  <g fill="#6ee7b7">
+    <circle cx="40" cy="28" r="4"/><circle cx="67" cy="28" r="4" fill="#c084fc"/><circle cx="94" cy="28" r="4" fill="#fbbf24"/>
+    <path d="M87 149h8v8h-8zM742 64h8v8h-8z"/>
+  </g>
+  <g fill="#f0abfc"><path d="M710 190h10v10h-10zM118 57h6v6h-6z"/></g>
+  <g fill="#fcd34d"><path d="M762 145h8v8h-8zM205 211h6v6h-6z"/></g>
+  <path d="M48 216h180M612 32h180" stroke="url(#ink)" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(0 30)">
   <path d="M166 84V70a20 20 0 0 1 40 0v14" fill="none" stroke="#a7f3d0" stroke-width="8"/>
   <rect x="152" y="82" width="68" height="48" rx="10" fill="#a7f3d0"/>
   <circle cx="186" cy="102" r="5" fill="#0d1117"/>
@@ -20,5 +48,6 @@
   <path d="M472 64h12v12h-12zM484 64h12v12h-12zM496 64h12v12h-12zM508 64h12v12h-12zM520 64h12v12h-12zM472 76h12v12h-12zM472 88h12v12h-12zM484 88h12v12h-12zM496 88h12v12h-12zM508 88h12v12h-12zM472 100h12v12h-12zM472 112h12v12h-12zM484 112h12v12h-12zM496 112h12v12h-12zM508 112h12v12h-12zM520 112h12v12h-12z"/>
   <path d="M544 64h12v12h-12zM592 64h12v12h-12zM544 76h12v12h-12zM556 76h12v12h-12zM580 76h12v12h-12zM592 76h12v12h-12zM544 88h12v12h-12zM568 88h12v12h-12zM592 88h12v12h-12zM544 100h12v12h-12zM592 100h12v12h-12zM544 112h12v12h-12zM592 112h12v12h-12z"/>
   <path d="M616 64h12v12h-12zM628 64h12v12h-12zM640 64h12v12h-12zM652 64h12v12h-12zM664 64h12v12h-12zM616 76h12v12h-12zM616 88h12v12h-12zM628 88h12v12h-12zM640 88h12v12h-12zM652 88h12v12h-12zM616 100h12v12h-12zM616 112h12v12h-12zM628 112h12v12h-12zM640 112h12v12h-12zM652 112h12v12h-12zM664 112h12v12h-12z"/>
+  </g>
   </g>
 </svg>
