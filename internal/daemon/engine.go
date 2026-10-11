@@ -75,7 +75,7 @@ func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
 		return failure(e.health, now)
 	}
 	switch req.Cmd {
-	case core.CreateDaily, core.CreateRange, core.AddWindow:
+	case core.CreateDaily, core.CreateRange, core.AddWindow, core.EditWindow:
 		return e.prepare(req, owner, now)
 	case core.Confirm:
 		return e.confirm(req.Code, owner, now)

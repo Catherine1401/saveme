@@ -104,7 +104,7 @@ func TestEveryMutationDeniedAndStatusRedacted(t *testing.T) {
 	f := newFixture(t)
 	createRange(t, f)
 	f.enforcer.fail = true
-	commands := []core.Command{core.CreateDaily, core.AddWindow, core.DeleteWindow, core.CreateRange, core.Confirm, core.Cancel, core.AddDomain, core.EditDomain, core.DeleteDomain}
+	commands := []core.Command{core.CreateDaily, core.AddWindow, core.EditWindow, core.DeleteWindow, core.CreateRange, core.Confirm, core.Cancel, core.AddDomain, core.EditDomain, core.DeleteDomain}
 	for _, command := range commands {
 		response := f.engine.Handle(core.Request{Cmd: command}, owner)
 		if response.Error != core.ErrLocked {

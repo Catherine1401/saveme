@@ -161,7 +161,7 @@ func (m Model) domainEditView() string {
 }
 
 func (m Model) windowListView() string {
-	const header, footer, format = " Daily schedule\n\n", "\n a add; d delete; ↑↓ select; Esc back\n", "%s to %s — %s"
+	const header, footer, format = " Daily schedule\n\n", "\n a add; e edit; d delete; ↑↓ select; Esc back\n", "%s to %s — %s"
 	const active, waiting = "active", "waiting"
 	body := header
 	if m.status.State.Lock == nil {
@@ -200,10 +200,18 @@ func (m Model) windowEditView() string {
 		}
 	}
 	body := header
+	if m.editingWindow {
+		const editHeader = " Edit daily window\n\n"
+		body = editHeader
+	}
 	for _, window := range m.windows {
 		body += fmt.Sprintf(appended, formatMinute(window.Start), formatMinute(window.End))
 	}
 	body += fmt.Sprintf(format, textEmpty, fields[zero], fields[one], fields[two], fields[three])
+	if m.editingWindow {
+		const editFooter = "\n ←→ field; ↑↓ adjust; 2 digits advance\n Enter save; Esc back\n"
+		return body + editFooter
+	}
 	return body + footer
 }
 

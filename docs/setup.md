@@ -126,7 +126,10 @@ Demo mode proves the interface flow, not network blocking.
 
 Use arrow keys to select, Enter to save, and Esc to go back. In the domain list,
 `a` adds, `e` edits and `d` deletes. In a daily window, left/right selects a field,
-up/down adjusts it, and `a` adds another window before confirmation.
+up/down adjusts it, and `a` adds another window before confirmation. In the saved
+daily schedule, select a window and press `e` to edit its hours. Press Enter,
+review the complete schedule, and type the confirmation code to save. Edits are
+refused while blocking is active.
 
 When locked, the menu disappears. `q` exits the UI; the daemon keeps enforcing
 it. Outside active daily windows, you can edit domains and schedules. Timed

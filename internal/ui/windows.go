@@ -11,12 +11,13 @@ func (m *Model) beginWindow() {
 	const ()
 
 	const defaultHour, endHour, zero, empty = 22, 6, 0, ""
+	m.editingWindow, m.error = false, empty
 	m.screen, m.windows, m.field, m.digits = windowEdit, nil, zero, empty
 	m.fields = [timeFieldCount]int{defaultHour, zero, endHour, zero}
 }
 
 func (m Model) windowListKey(key KeyMsg) (Model, Cmd) {
-	const add, remove, one = "a", "d", 1
+	const add, edit, remove, one = "a", "e", "d", 1
 	if m.status.State.Lock == nil {
 		m.screen = mainScreen
 		return m, nil
@@ -26,6 +27,15 @@ func (m Model) windowListKey(key KeyMsg) (Model, Cmd) {
 	switch key.String() {
 	case add:
 		m.beginWindow()
+	case edit:
+		const minutes, zero = 60, 0
+		if len(windows) == zero {
+			return m, nil
+		}
+		window := windows[m.selected]
+		m.beginWindow()
+		m.editingWindow = true
+		m.fields = [timeFieldCount]int{window.Start / minutes, window.Start % minutes, window.End / minutes, window.End % minutes}
 	case remove:
 		if len(windows) == one {
 			m.screen = lastWindow
@@ -97,7 +107,11 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 	windows := append(append([]core.Window{}, m.windows...), current)
 	validation := append([]core.Window{}, windows...)
 	if m.status.State.Lock != nil {
-		validation = append(validation, m.status.State.Lock.Windows...)
+		for index, window := range m.status.State.Lock.Windows {
+			if !m.editingWindow || index != m.selected {
+				validation = append(validation, window)
+			}
+		}
 	}
 	if err := core.ValidateWindows(validation); err != nil {
 		m.error = string(err.(core.ErrorCode))
@@ -109,7 +123,11 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 		)
 
 		if save {
-			return m.submit(core.Request{Cmd: core.AddWindow, Start: formatMinute(current.Start), End: formatMinute(current.End)})
+			request := core.Request{Cmd: core.AddWindow, Start: formatMinute(current.Start), End: formatMinute(current.End)}
+			if m.editingWindow {
+				request.Cmd, request.Index = core.EditWindow, &m.selected
+			}
+			return m.submit(request)
 		}
 		m.error = confirmSingleWindow
 		return m, nil

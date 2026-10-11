@@ -6,6 +6,7 @@ const (
 	Status       Command = "status"
 	CreateDaily  Command = "create_daily"
 	AddWindow    Command = "add_window"
+	EditWindow   Command = "edit_window"
 	DeleteWindow Command = "delete_window"
 	CreateRange  Command = "create_range"
 	Confirm      Command = "confirm"

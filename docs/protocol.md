@@ -12,6 +12,7 @@ Use one connection for a pending operation and its confirmation. There is one pe
 | `delete_domain` | `index` | Delete a domain; preserve the last one if a lock exists |
 | `create_daily` | `windows: [{start, end}]` | Prepare a nonempty daily schedule |
 | `add_window` | `start`, `end` | Prepare a new daily window |
+| `edit_window` | `index`, `start`, `end` | Prepare a replacement daily window; confirmation required |
 | `delete_window` | `index`, optional `confirmed` | Delete a window; the last requires `confirmed: true` |
 | `create_range` | `duration` | Prepare one of ten choices: 1h, 2h, 4h, 6h, 12h, 1d, 3d, 7d, 14d, 30d |
 | `confirm` | `code` | Recheck guards, persist and enforce the prepared lock |

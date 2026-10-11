@@ -39,6 +39,7 @@ type Model struct {
 	fields         [timeFieldCount]int
 	field          int
 	digits         string
+	editingWindow  bool
 	editingDomain  bool
 	domainText     string
 	pending        core.Response

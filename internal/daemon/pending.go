@@ -36,7 +36,7 @@ func (e *Engine) candidate(req core.Request, now time.Time) (core.State, error) 
 	if len(state.Domains) == zero {
 		return core.State{}, core.ErrInvalid
 	}
-	if req.Cmd != core.AddWindow && state.Lock != nil {
+	if req.Cmd != core.AddWindow && req.Cmd != core.EditWindow && state.Lock != nil {
 		return core.State{}, core.ErrHasLock
 	}
 	switch req.Cmd {
@@ -55,7 +55,7 @@ func (e *Engine) candidate(req core.Request, now time.Time) (core.State, error) 
 		if err := core.ValidateWindows(state.Lock.Windows); err != nil {
 			return core.State{}, err
 		}
-	case core.AddWindow:
+	case core.AddWindow, core.EditWindow:
 		if state.Lock == nil || state.Lock.Kind != core.Daily {
 			return core.State{}, core.ErrInvalid
 		}
@@ -63,7 +63,14 @@ func (e *Engine) candidate(req core.Request, now time.Time) (core.State, error) 
 		if err != nil {
 			return core.State{}, err
 		}
-		state.Lock.Windows = append(state.Lock.Windows, window)
+		if req.Cmd == core.EditWindow {
+			if !validIndex(req.Index, len(state.Lock.Windows)) {
+				return core.State{}, core.ErrInvalid
+			}
+			state.Lock.Windows[*req.Index] = window
+		} else {
+			state.Lock.Windows = append(state.Lock.Windows, window)
+		}
 		if err := core.ValidateWindows(state.Lock.Windows); err != nil {
 			return core.State{}, err
 		}
