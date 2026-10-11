@@ -29,9 +29,15 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		}
 		return m, nil
 	}
+	const vimBack = "h"
+	if key.String() == vimBack && !key.Paste && m.screen != mainScreen && m.screen != domainEdit && m.screen != windowEdit && m.screen != confirmation {
+		return m.back()
+	}
 	if m.screen == confirmation {
+		m.vim.prefix = false
 		return m.confirmKey(key)
 	}
+	key = m.vimKey(key)
 	if key.String() == escape {
 		const (
 			number0 = 0

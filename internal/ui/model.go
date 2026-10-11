@@ -25,6 +25,7 @@ const (
 )
 
 type Model struct {
+	vim            vimMode
 	appearance     appearance
 	client         Caller
 	normalizer     interface{ Normalize(string) (string, error) }
