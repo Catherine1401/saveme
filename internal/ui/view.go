@@ -118,19 +118,19 @@ func (m Model) row(index int, text string) string {
 
 func (m Model) mainView() string {
 	const idle, next, footer, zero = " No lock\n\n", " Next lock in %s\n\n", "\n ↑↓ / 1–3 / Enter select; q quit\n", 0
-	const dailyLabel, rangeLabel, domainLabel, unavailable = "Daily schedule", "Timed lock", "Edit domains", " (delete the daily schedule first)"
+	const dailyLabel, rangeLabel, domainLabel = "Daily schedule", "Timed lock", "Edit domains"
 	body := idle
 	if m.status.NextAt != zero {
 		body = fmt.Sprintf(next, countdown(m.status.NextAt-m.status.Now))
 	}
-	rangeText := rangeLabel
-	if m.status.Kind == core.Daily {
-		const faint, reset = "\x1b[2m", "\x1b[0m"
-		rangeText = faint + rangeText + unavailable + reset
-	}
-	labels := []string{dailyLabel, rangeText, domainLabel}
+	labels := []string{dailyLabel, rangeLabel, domainLabel}
+	const timedIndex, reason = 1, "delete the daily schedule first"
 	for index, label := range labels {
-		body += m.row(index, label)
+		if index == timedIndex && m.status.State.Lock != nil {
+			body += m.disabledRow(index, label, reason)
+		} else {
+			body += m.row(index, label)
+		}
 	}
 	return body + footer
 }
@@ -144,6 +144,15 @@ func (m Model) domainListView() string {
 	}
 	for index, domain := range m.status.State.Domains {
 		body += m.row(index, domain)
+	}
+	const one = 1
+	if len(m.status.State.Domains) == zero {
+		const unavailable = "\n a add; e edit [disabled: no domains]; d delete [disabled: no domains]; Esc back\n"
+		return body + m.ink(unavailable, toneMuted, false)
+	}
+	if len(m.status.State.Domains) == one && m.status.State.Lock != nil {
+		const unavailable = "\n a add; e edit; d delete [disabled: last domain is required by the schedule]; ↑↓ select; Esc back\n"
+		return body + m.ink(unavailable, toneMuted, false)
 	}
 	return body + footer
 }
