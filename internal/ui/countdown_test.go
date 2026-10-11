@@ -10,7 +10,7 @@ import (
 
 func TestLockedCountdownCentersAndResizesWithoutChangingTime(t *testing.T) {
 	const width, height, narrow, short, now, end = 80, 24, 24, 10, 1000, 4661
-	const label, block, newline = "Locked: 01:01:01 remaining", "█", "\n"
+	const label, block, newline = "Locked: 01:01:01 remaining", "━", "\n"
 	model := readyModel().Appearance(true, true)
 	model.status = core.Response{OK: true, Active: true, Now: now, EndAt: end}
 	model, _ = model.Update(Resize{Width: width, Height: height})
@@ -32,7 +32,7 @@ func TestLockedCountdownCentersAndResizesWithoutChangingTime(t *testing.T) {
 
 func TestLargeCountdownHandlesDaysAndAllDigits(t *testing.T) {
 	const digits, width, height, days, label = "0123456789:", 100, 30, 86400, "Locked: 1d 00:00:00 remaining"
-	if !strings.Contains(drawClock(digits), "█") {
+	if !strings.Contains(drawClock(digits), "━") {
 		t.Fatal(drawClock(digits))
 	}
 	model := readyModel()

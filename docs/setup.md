@@ -228,7 +228,7 @@ env -u NO_COLOR saveme
 ```
 
 Narrow terminals wrap text and show the confirmation code as ordinary text when
-the existing block glyphs cannot fit. Confirmation and paste restrictions still
+the four character cells cannot fit. Confirmation and paste restrictions still
 apply. For a local preview without network enforcement, run `./bin/saved -demo`
 and `./bin/saveme -demo` in separate terminals.
 
@@ -237,3 +237,8 @@ to the first/last item, and `h`/`l` select time fields. In time fields, `k`
 increases and `j` decreases the value. Arrow keys remain available. Domain
 text and confirmation codes use normal text input. Outside input screens, `h`
 returns one level and `l` opens the selected item (or edits a saved domain/window).
+
+The active-lock countdown uses large seven-segment digits centered in the
+terminal with heavy strokes and seven visible rows for every digit; small
+terminals use ordinary text. Confirmation displays the four
+real characters in separate cells, using your existing terminal font.

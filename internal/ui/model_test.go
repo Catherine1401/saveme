@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -124,15 +125,15 @@ func TestCodeDrawingAndCancellation(t *testing.T) {
 		textEmpty = ""
 	)
 
-	const code, block, alphabet = "K7MQ", "██", "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-	const patternSize = 25
+	const code, border, alphabet = "K7MQ", "┏━━━┓", "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 	for _, char := range alphabet {
-		if len(codePattern(char)) != patternSize {
+		const format = "┃ %s ┃"
+		if !strings.Contains(drawCode(string(char)), fmt.Sprintf(format, string(char))) {
 			t.Fatal(char)
 		}
 	}
 	drawing := drawCode(code)
-	if strings.Contains(drawing, code) || !strings.Contains(drawing, block) {
+	if strings.Contains(drawing, code) || !strings.Contains(drawing, border) {
 		t.Fatal(drawing)
 	}
 	model := readyModel()
