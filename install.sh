@@ -73,14 +73,14 @@ extract() {
 
 main() (
   local readonly base=https://github.com/Catherine1401/saveme/releases
-  local readonly empty='' zero=0 one=1 two=2 tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+  local readonly empty='' zero=0 one=1 two=2 tag_pattern='^v?[0-9]+\.[0-9]+\.[0-9]+$'
   local readonly checksum_name=checksums.txt install_name=install.sh update_name=update.sh
   local readonly temporary_pattern=saveme-install.XXXXXXXX payload_name=payload
   local readonly cleanup='rm -rf -- "$workspace"' format='%s\n'
   local readonly root_message='Run this script as an ordinary user, without sudo.'
   local readonly owner_message='Select a non-root Linux account with --user.'
   local readonly offline_message='Offline install needs --archive, --checksums and --version.'
-  local readonly curl_message='Missing command: curl' tag_message='Expected a stable version such as v0.1.0.'
+  local readonly curl_message='Missing command: curl' tag_message='Expected a stable version such as 0.1.0 or v0.1.0.'
   local readonly version_message='Bundle version does not match the requested version.'
   local version="$empty" archive="$empty" checksums="$empty" update="$zero"
   local owner="${USER:-$empty}"

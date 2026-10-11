@@ -3,11 +3,11 @@ set -euo pipefail
 
 package() (
   local readonly version="${1:?Specify a stable version such as v0.1.0.}"
-  local readonly script_index=0 pattern='^v[0-9]+\.[0-9]+\.[0-9]+$' failure=1 format='%s\n'
+  local readonly script_index=0 pattern='^v?[0-9]+\.[0-9]+\.[0-9]+$' failure=1 format='%s\n'
   local readonly root="$(cd -- "$(dirname -- "${BASH_SOURCE[$script_index]}")/.." && pwd)"
   local readonly directory="dist/$version" checksum_name=checksums.txt package_name=package linux=linux disabled=0
   local readonly cleanup='rm -rf -- "$temporary"' temporary_pattern=saveme-release.XXXXXXXX
-  [[ "$version" =~ $pattern ]] || { printf "$format" 'Expected a stable version such as v0.1.0.' >&2; return "$failure"; }
+  [[ "$version" =~ $pattern ]] || { printf "$format" 'Expected a stable version such as 0.1.0 or v0.1.0.' >&2; return "$failure"; }
   local temporary
   temporary="$(mktemp -d "${TMPDIR:-/tmp}/$temporary_pattern")"
   readonly temporary
