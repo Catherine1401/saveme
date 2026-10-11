@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="188" viewBox="0 0 840 188" role="img" aria-labelledby="title desc">
+  <title id="title">saveme</title>
+  <desc id="desc">Mint and lavender pixel lettering with a lock, using the terminal UI letter shapes.</desc>
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#c4b5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="840" height="188" rx="20" fill="#0d1117"/>
+  <rect x="1" y="1" width="838" height="186" rx="19" fill="none" stroke="#30363d"/>
+  <path d="M166 84V70a20 20 0 0 1 40 0v14" fill="none" stroke="#a7f3d0" stroke-width="8"/>
+  <rect x="152" y="82" width="68" height="48" rx="10" fill="#a7f3d0"/>
+  <circle cx="186" cy="102" r="5" fill="#0d1117"/>
+  <path d="M183 102h6v12h-6z" fill="#0d1117"/>
+  <g fill="url(#ink)">
+  <path d="M268 64h12v12h-12zM280 64h12v12h-12zM292 64h12v12h-12zM304 64h12v12h-12zM256 76h12v12h-12zM268 88h12v12h-12zM280 88h12v12h-12zM292 88h12v12h-12zM304 100h12v12h-12zM256 112h12v12h-12zM268 112h12v12h-12zM280 112h12v12h-12zM292 112h12v12h-12z"/>
+  <path d="M340 64h12v12h-12zM352 64h12v12h-12zM364 64h12v12h-12zM328 76h12v12h-12zM376 76h12v12h-12zM328 88h12v12h-12zM340 88h12v12h-12zM352 88h12v12h-12zM364 88h12v12h-12zM376 88h12v12h-12zM328 100h12v12h-12zM376 100h12v12h-12zM328 112h12v12h-12zM376 112h12v12h-12z"/>
+  <path d="M400 64h12v12h-12zM448 64h12v12h-12zM400 76h12v12h-12zM448 76h12v12h-12zM400 88h12v12h-12zM448 88h12v12h-12zM412 100h12v12h-12zM436 100h12v12h-12zM424 112h12v12h-12z"/>
+  <path d="M472 64h12v12h-12zM484 64h12v12h-12zM496 64h12v12h-12zM508 64h12v12h-12zM520 64h12v12h-12zM472 76h12v12h-12zM472 88h12v12h-12zM484 88h12v12h-12zM496 88h12v12h-12zM508 88h12v12h-12zM472 100h12v12h-12zM472 112h12v12h-12zM484 112h12v12h-12zM496 112h12v12h-12zM508 112h12v12h-12zM520 112h12v12h-12z"/>
+  <path d="M544 64h12v12h-12zM592 64h12v12h-12zM544 76h12v12h-12zM556 76h12v12h-12zM580 76h12v12h-12zM592 76h12v12h-12zM544 88h12v12h-12zM568 88h12v12h-12zM592 88h12v12h-12zM544 100h12v12h-12zM592 100h12v12h-12zM544 112h12v12h-12zM592 112h12v12h-12z"/>
+  <path d="M616 64h12v12h-12zM628 64h12v12h-12zM640 64h12v12h-12zM652 64h12v12h-12zM664 64h12v12h-12zM616 76h12v12h-12zM616 88h12v12h-12zM628 88h12v12h-12zM640 88h12v12h-12zM652 88h12v12h-12zM616 100h12v12h-12zM616 112h12v12h-12zM628 112h12v12h-12zM640 112h12v12h-12zM652 112h12v12h-12zM664 112h12v12h-12z"/>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+      - name: Check code and deployment scripts
+        run: |
+          make test check
+          bash -n install.sh deploy/install.sh deploy/update.sh deploy/check.sh scripts/release.sh scripts/install_test.sh
+      - name: Build Linux bundles
+        run: bash scripts/release.sh "$GITHUB_REF_NAME"
+      - name: Check installer bootstrap
+        run: bash scripts/install_test.sh "dist/$GITHUB_REF_NAME"
+      - name: Publish binaries and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$GITHUB_REF_NAME"
+          gh release create "$version" --verify-tag --generate-notes \
+            "dist/$version/saveme_${version#v}_linux_amd64.tar.gz" \
+            "dist/$version/saveme_${version#v}_linux_arm64.tar.gz" \
+            "dist/$version/checksums.txt"

@@ -1,0 +1,9 @@
+# Agent entry point
+
+- Before code exploration, read every document in `context/` and `.docs/context/` when present. Then read `.docs/flow.md`, `.docs/trace.md` and `.docs/handoff.md`. If local handoff files are absent, read `docs/setup.md`, `docs/protocol.md` and `docs/install.md`; reconstruct missing decisions from the current task and ask only for decision-critical gaps.
+- Compare the context branch/head with Git status and changed paths. Revalidate affected claims; distinguish historical evidence, current tests, skipped tests and unverified behavior. Never interpret archived reports as current status.
+- Before changing code, map the assigned requirement to its flow, existing implementation and verification in `.docs/trace.md`. Search for equivalent logic and reuse it. Do not implement unrelated TODOs.
+- Preserve these decisions: the daemon owns validation and enforcement; save a confirmed lock before enforcing it; keep existing locks closed while NTP is untrusted; block `facebook.com` and `www.facebook.com` for the `facebook.com` entry while allowing other subdomains unless separately listed; reject updates while any stored lock exists.
+- Verify affected success, refusal, recovery and restart paths. Run privileged network/storage tests only in isolated environments; do not install on the host without authorization. A checksum fixture, cross-build or local workflow lint does not prove a published release or runtime support.
+- Before handoff, update the same context file, requirement trace and pending-work checklist. Run `python3 .docs/check.py` when available. Record exact commands, evidence, limitations, Git state and the next action; mark missing evidence explicitly.
+- Each commit requires approval of its exact hunks and message. The user waived tickets for this repository. Earlier commit approval does not authorize subsequent commits, tags or releases.

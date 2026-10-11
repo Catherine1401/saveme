@@ -1,0 +1,5 @@
+/bin/
+/.demo/
+/docs/*.local.md
+/.docs/
+/dist/
