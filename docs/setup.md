@@ -130,7 +130,7 @@ up/down adjusts it, and `a` adds another window before confirmation.
 
 When locked, the menu disappears. `q` exits the UI; the daemon keeps enforcing
 it. Outside active daily windows, you can edit domains and schedules. Timed
-choices are 12 hours, or 1, 3, 7, 14 or 30 days.
+choices are 1, 2, 4, 6 or 12 hours, or 1, 3, 7, 14 or 30 days.
 
 ## Limits
 

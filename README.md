@@ -19,7 +19,7 @@ saveme
 
 ## Features
 
-- Daily schedules and 12h–30d timed locks.
+- Daily schedules and 1h–30d timed locks.
 - Active locks prevent changes to domains and schedules.
 - Locks survive closing the terminal and daemon restarts.
 

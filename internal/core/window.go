@@ -71,9 +71,19 @@ func ValidateWindows(windows []Window) error {
 
 func Duration(value string) (time.Duration, error) {
 	const day = 24 * time.Hour
+	const hourOne, hourTwo, hourFour, hourSix = "1h", "2h", "4h", "6h"
+	const twoHours, fourHours, sixHours = 2, 4, 6
 	const halfDay, one, three, seven, fourteen, thirty = "12h", "1d", "3d", "7d", "14d", "30d"
 	const halfHours, threeDays, sevenDays, fortnightDays, monthDays, zero = 12, 3, 7, 14, 30, 0
 	switch value {
+	case hourOne:
+		return time.Hour, nil
+	case hourTwo:
+		return twoHours * time.Hour, nil
+	case hourFour:
+		return fourHours * time.Hour, nil
+	case hourSix:
+		return sixHours * time.Hour, nil
 	case halfDay:
 		return halfHours * time.Hour, nil
 	case one:

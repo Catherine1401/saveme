@@ -14,9 +14,11 @@ type durationChoice struct {
 }
 
 func durationChoices() []durationChoice {
+	const hourOne, hourTwo, hourFour, hourSix = "1h", "2h", "4h", "6h"
+	const labelOne, labelTwo, labelFour, labelSix = "1 hour", "2 hours", "4 hours", "6 hours"
 	const half, one, three, seven, fourteen, thirty = "12h", "1d", "3d", "7d", "14d", "30d"
 	const halfLabel, oneLabel, threeLabel, sevenLabel, fourteenLabel, thirtyLabel = "12 hours", "1 day", "3 days", "7 days", "14 days", "30 days"
-	return []durationChoice{{Value: half, Label: halfLabel}, {Value: one, Label: oneLabel}, {Value: three, Label: threeLabel}, {Value: seven, Label: sevenLabel}, {Value: fourteen, Label: fourteenLabel}, {Value: thirty, Label: thirtyLabel}}
+	return []durationChoice{{Value: hourOne, Label: labelOne}, {Value: hourTwo, Label: labelTwo}, {Value: hourFour, Label: labelFour}, {Value: hourSix, Label: labelSix}, {Value: half, Label: halfLabel}, {Value: one, Label: oneLabel}, {Value: three, Label: threeLabel}, {Value: seven, Label: sevenLabel}, {Value: fourteen, Label: fourteenLabel}, {Value: thirty, Label: thirtyLabel}}
 }
 
 func countdown(seconds int64) string {
