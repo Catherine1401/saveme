@@ -39,11 +39,12 @@ func (m Model) View() string {
 		textEmpty = ""
 	)
 
+	const space, zero = " ", 0
 	const header, errorFormat, busy = " saveme\n\n", "\n %s\n", "\n Working…\n"
 	var body string
 	if !m.ready {
 		const loading = " Connecting to daemon…\n q quit\n"
-		body = loading
+		body = space + m.spinner() + loading
 	} else if m.status.Active {
 		const infinite, remaining, message = " Locked with no release time.\n", " Locked: %s remaining\n", "\n Website blocking is active.\n\n q quit\n"
 		const zero = 0
@@ -62,9 +63,13 @@ func (m Model) View() string {
 		body += fmt.Sprintf(errorFormat, m.error)
 	}
 	if m.busy {
-		body += busy
+		body += space + m.spinner() + busy
 	}
-	return header + body
+	color := toneAccent
+	if m.status.Active && m.appearance.flash > zero && !m.appearance.still {
+		color = toneShimmer
+	}
+	return m.ink(header, color, true) + m.decorate(body)
 }
 
 func (m Model) screenView() string {
@@ -78,7 +83,7 @@ func (m Model) screenView() string {
 	case domainEdit:
 		return m.domainEditView()
 	case rangeList:
-		const header, footer = " Select duration\n\n", "\n ↑↓ / 1–6 / Enter select; Esc back\n"
+		const header, footer = " Select duration\n\n", "\n ↑↓ / 1–9 / Enter select; Esc back\n"
 		body := header
 		for index, choice := range durationChoices() {
 			body += m.row(index, choice.Label)
@@ -104,7 +109,11 @@ func (m Model) row(index int, text string) string {
 	if index == m.selected {
 		marker = selected
 	}
-	return fmt.Sprintf(format, marker, index+one, text)
+	line := fmt.Sprintf(format, marker, index+one, text)
+	if index == m.selected {
+		return m.selectedRow(line)
+	}
+	return m.ink(line, toneText, false)
 }
 
 func (m Model) mainView() string {
@@ -183,6 +192,9 @@ func (m Model) windowEditView() string {
 			fieldFormat = focus
 		}
 		fields[index] = fmt.Sprintf(fieldFormat, value)
+		if index == m.field {
+			fields[index] = m.ink(fields[index], toneConfirm, true)
+		}
 	}
 	body := header
 	for _, window := range m.windows {
@@ -212,7 +224,7 @@ func (m Model) confirmView() string {
 	for _, domain := range state.Domains {
 		body += fmt.Sprintf(domainFormat, domain)
 	}
-	body += notice + drawCode(m.pending.Code)
+	body += notice + m.confirmCode()
 	var slots []string
 	for index := zero; index < codeLength; index++ {
 		char := placeholder

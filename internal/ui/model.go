@@ -25,6 +25,7 @@ const (
 )
 
 type Model struct {
+	appearance     appearance
 	client         Caller
 	normalizer     interface{ Normalize(string) (string, error) }
 	status         core.Response
@@ -62,7 +63,7 @@ func New(client Caller, normalizer interface{ Normalize(string) (string, error) 
 }
 
 func (m Model) Init() Cmd {
-	return Batch(m.call(core.Request{Cmd: core.Status}), nextTick())
+	return Batch(m.call(core.Request{Cmd: core.Status}), nextTick(), m.animate())
 }
 
 func nextTick() Cmd {
@@ -77,7 +78,16 @@ func (m Model) call(request core.Request) Cmd {
 }
 
 func (m Model) Update(message Msg) (Model, Cmd) {
+	const frames, pulse, zero, one = 8, 6, 0, 1
 	switch value := message.(type) {
+	case Resize:
+		m.appearance.width, m.appearance.height = value.Width, value.Height
+	case animationFrame:
+		m.appearance.frame = (m.appearance.frame + one) % frames
+		if m.appearance.flash > zero {
+			m.appearance.flash--
+		}
+		return m, m.animate()
 	case tick:
 		if m.busy {
 			return m, nextTick()
@@ -89,6 +99,7 @@ func (m Model) Update(message Msg) (Model, Cmd) {
 		const codeLength = 4
 		if m.screen == confirmation && value.generation == m.charGeneration && len(m.codeInput) < codeLength {
 			m.codeInput += string(value.char)
+			m.appearance.flash = pulse
 		}
 	case KeyMsg:
 		return m.key(value)
@@ -107,6 +118,7 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		return m, nil
 	}
 	if value.request.Cmd == core.Status {
+		wasActive := m.status.Active
 		m.status, m.ready = value.response, true
 		if !value.response.OK {
 			m.error = value.response.Message
@@ -114,7 +126,12 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		if m.status.Active {
 			m.clearConfirmation()
 			m.screen = mainScreen
-			return m, ClearScreen
+			if !wasActive {
+				const pulse = 10
+				m.appearance.flash = pulse
+				return m, ClearScreen
+			}
+			return m, nil
 		}
 		if m.screen == confirmation && m.status.Now >= m.pending.Now+m.pending.ExpiresIn {
 			const (
@@ -154,6 +171,8 @@ func (m Model) receive(value reply) (Model, Cmd) {
 	}
 	switch value.request.Cmd {
 	case core.Confirm:
+		const pulse = 10
+		m.appearance.flash = pulse
 		m.clearConfirmation()
 		m.screen, m.selected = mainScreen, zero
 	case core.Cancel:

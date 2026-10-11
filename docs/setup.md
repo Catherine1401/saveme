@@ -205,3 +205,26 @@ Implementation references: [Bubble Tea](https://github.com/charmbracelet/bubblet
 [Google Public DNS addresses](https://developers.google.com/speed/public-dns/docs/using).
 Dependencies are pinned in `go.mod` and `go.sum`; these links do not imply that
 the project uses the latest major versions.
+
+## Terminal appearance
+
+The TUI uses mint for selection, purple for confirmation and muted hints, with
+light and dark terminal backgrounds supported. Loading indicators animate;
+confirmation feedback is brief. Animation never advances the lock clock or
+increases daemon polling. Your terminal font and color scheme stay unchanged.
+
+```sh
+saveme --no-motion
+saveme --no-color --no-motion
+```
+
+`NO_COLOR` also disables colors. To preview colors when that variable is set:
+
+```sh
+env -u NO_COLOR saveme
+```
+
+Narrow terminals wrap text and show the confirmation code as ordinary text when
+the existing block glyphs cannot fit. Confirmation and paste restrictions still
+apply. For a local preview without network enforcement, run `./bin/saved -demo`
+and `./bin/saveme -demo` in separate terminals.

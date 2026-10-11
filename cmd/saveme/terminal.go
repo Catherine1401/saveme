@@ -11,6 +11,9 @@ func (t terminal) Init() tea.Cmd { return command(t.model.Init()) }
 func (t terminal) View() string  { return t.model.View() }
 
 func (t terminal) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	if size, ok := message.(tea.WindowSizeMsg); ok {
+		message = ui.Resize{Width: size.Width, Height: size.Height}
+	}
 	if key, ok := message.(tea.KeyMsg); ok {
 		kind := ui.KeyControl
 		if key.Type == tea.KeyRunes {
