@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"time"
 
 	"saveme/internal/core"
@@ -24,6 +25,10 @@ const (
 	domainMenu
 	domainLocked
 	domainDelete
+	helpScreen
+	settingsScreen
+	pickerScreen
+	presetList
 )
 
 type Model struct {
@@ -50,6 +55,18 @@ type Model struct {
 	codeInput      string
 	lastChar       time.Time
 	charGeneration uint64
+	marked         []string
+	settings       Settings
+	saveSettings   func(Settings) error
+	picking        int
+	draft          []string
+	clockText      string
+	previousClock  string
+	changedAt      time.Time
+	searching      bool
+	filter         string
+	seenError      string
+	seenAt         time.Time
 }
 
 type reply struct {
@@ -88,12 +105,14 @@ func (m Model) Update(message Msg) (Model, Cmd) {
 	case Resize:
 		m.appearance.width, m.appearance.height = value.Width, value.Height
 	case animationFrame:
+		m.appearance.now = time.Time(value)
 		m.appearance.frame = (m.appearance.frame + one) % frames
 		if m.appearance.flash > zero {
 			m.appearance.flash--
 		}
 		return m, m.animate()
 	case tick:
+		m = m.expireError(time.Time(value))
 		if m.busy {
 			return m, nextTick()
 		}
@@ -124,9 +143,10 @@ func (m Model) receive(value reply) (Model, Cmd) {
 	}
 	if value.request.Cmd == core.Status {
 		m.status, m.ready = value.response, true
-		if !value.response.OK {
+		if !value.response.OK && value.response.Error != core.ErrClockUnsync {
 			m.error = value.response.Message
 		}
+		m = m.trackClock(time.Now())
 		if model, action, changed := m.follow(); changed {
 			return model, action
 		}
@@ -171,12 +191,12 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		const pulse = 10
 		m.appearance.flash = pulse
 		m.clearConfirmation()
-		m.screen, m.selected = mainScreen, m.entry
+		m.screen, m.selected, m.marked = mainScreen, m.position(m.entry), nil
 	case core.Cancel:
 		m.clearConfirmation()
 		m.screen = m.previous
 	case core.AddDomain, core.EditDomain, core.DeleteDomain:
-		m.screen, m.selected = mainScreen, move(empty, m.selected, len(m.status.Entries))
+		m.screen, m.selected = mainScreen, move(empty, m.selected, len(m.order()))
 	case core.DeleteWindow:
 		m.screen = windowList
 	}
@@ -193,7 +213,7 @@ func succeeded(value reply) bool {
 // Đồng bộ màn hình theo trạng thái khóa mới nhất của domain đang thao tác.
 func (m Model) follow() (Model, Cmd, bool) {
 	const zero, pulse = 0, 10
-	scoped := m.screen != mainScreen && m.screen != domainEdit
+	scoped := m.screen != mainScreen && m.screen != domainEdit && m.screen != helpScreen && m.screen != settingsScreen && m.screen != pickerScreen
 	entry, ok := m.current()
 	switch {
 	case scoped && !ok:
@@ -221,4 +241,34 @@ func (m Model) cancelPending() (Model, Cmd) {
 	m.screen = m.previous
 	model, action := m.submit(core.Request{Cmd: core.Cancel})
 	return model, Sequence(ClearScreen, action)
+}
+
+// Ẩn lỗi thao tác sau vài giây; lỗi trạng thái daemon thì giữ nguyên.
+func (m Model) expireError(now time.Time) Model {
+	const lifetime, empty = 5 * time.Second, ""
+	if m.error == empty || (!m.status.OK && m.error == m.status.Message) {
+		return m
+	}
+	if m.error != m.seenError {
+		m.seenError, m.seenAt = m.error, now
+		return m
+	}
+	if now.Sub(m.seenAt) >= lifetime {
+		m.error, m.seenError = empty, empty
+	}
+	return m
+}
+
+// Ghi nhớ chuỗi giờ trước đó và lúc đổi để hiệu ứng trượt chữ số.
+func (m Model) trackClock(now time.Time) Model {
+	const zero, separator, last = 0, " ", 1
+	entry, ok := m.current()
+	if !ok || entry.EndAt == zero {
+		return m
+	}
+	parts := strings.Split(countdown(entry.EndAt-m.status.Now), separator)
+	if text := parts[len(parts)-last]; text != m.clockText {
+		m.previousClock, m.clockText, m.changedAt = m.clockText, text, now
+	}
+	return m
 }

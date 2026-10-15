@@ -8,8 +8,9 @@ import (
 
 func TestQuitReturnsOneLevelOutsideInput(t *testing.T) {
 	const quit, message, empty = "q", "Previous error", ""
-	parents := map[screen]screen{domainMenu: mainScreen, domainLocked: mainScreen, domainDelete: mainScreen, windowList: domainMenu, rangeList: domainMenu, lastWindow: windowList}
-	for current, parent := range parents {
+	parents := []struct{ from, parent screen }{{domainMenu, mainScreen}, {domainLocked, mainScreen}, {domainDelete, mainScreen}, {windowList, domainMenu}, {rangeList, domainMenu}, {lastWindow, windowList}}
+	for _, pair := range parents {
+		current, parent := pair.from, pair.parent
 		model := readyModel()
 		model.screen, model.error = current, message
 		updated, action := model.Update(runeKey(quit))
@@ -45,10 +46,10 @@ func TestQuitRemainsTextOrIgnoredInInput(t *testing.T) {
 }
 
 func TestQuitExitsMainWithoutMutatingState(t *testing.T) {
-	const quit = "q"
+	const quit, none, first = "q", "", 0
 	for _, active := range []bool{false, true} {
 		model := readyModel()
-		model.status.Entries[0].Active = active
+		model.status.Entries[first].Active = active
 		updated, action := model.Update(runeKey(quit))
 		if action == nil || updated.screen != mainScreen {
 			t.Fatal(updated, action)
@@ -56,7 +57,7 @@ func TestQuitExitsMainWithoutMutatingState(t *testing.T) {
 		if _, ok := action().(QuitMsg); !ok {
 			t.Fatal(action())
 		}
-		if model.client.(*recordingClient).last.Cmd != core.Command("") {
+		if model.client.(*recordingClient).last.Cmd != core.Command(none) {
 			t.Fatal(model.client)
 		}
 	}

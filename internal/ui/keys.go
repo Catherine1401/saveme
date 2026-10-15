@@ -24,10 +24,13 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		return m, nil
 	}
 	const vimBack = "h"
-	if key.String() == vimBack && !key.Paste && m.screen != mainScreen && m.screen != domainEdit && m.screen != windowEdit && m.screen != confirmation {
+	if m.searching {
+		return m.searchKey(key)
+	}
+	if key.String() == vimBack && !key.Paste && m.screen != mainScreen && !m.typing() {
 		return m.back()
 	}
-	if key.String() == shortQuit && !key.Paste && m.screen != domainEdit && m.screen != windowEdit && m.screen != confirmation {
+	if key.String() == shortQuit && !key.Paste && !m.typing() {
 		return m.back()
 	}
 	if m.screen == confirmation {
@@ -36,7 +39,14 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 	}
 	key = m.vimKey(key)
 	if key.String() == escape {
-		m.screen, m.selected, m.error = mainScreen, m.entry, ""
+		if m.screen == mainScreen {
+			m.marked = nil
+		}
+		if m.screen == pickerScreen {
+			return m.cancelPicker(), nil
+		}
+		const empty = ""
+		m.screen, m.selected, m.error = mainScreen, m.position(m.entry), empty
 		return m, nil
 	}
 	switch m.screen {
@@ -57,6 +67,14 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		if key.String() == enter {
 			return m.submit(core.Request{Cmd: core.DeleteWindow, Entry: &m.entry, Index: &m.selected, Confirmed: true})
 		}
+	case helpScreen:
+		return m, nil
+	case settingsScreen:
+		return m.settingsKey(key)
+	case pickerScreen:
+		return m.pickerKey(key)
+	case presetList:
+		return m.presetKey(key)
 	case domainDelete:
 		const enter = "enter"
 		if key.String() == enter {
@@ -94,16 +112,19 @@ func move(key string, selected, count int) int {
 }
 
 func (m Model) rangeKey(key KeyMsg) (Model, Cmd) {
-	const enter, one = "enter", 1
+	const enter, one, zero, tenth = "enter", 1, 0, 10
 	durations := durationChoices()
 	m.selected = move(key.String(), m.selected, len(durations))
 	digit, err := strconv.Atoi(key.String())
 	choose := key.String() == enter
+	if err == nil && digit == zero && len(durations) >= tenth {
+		digit = tenth
+	}
 	if err == nil && digit >= one && digit <= len(durations) {
 		m.selected, choose = digit-one, true
 	}
 	if choose {
-		return m.submit(core.Request{Cmd: core.CreateRange, Entry: &m.entry, Duration: durations[m.selected].Value})
+		return m.submit(core.Request{Cmd: core.CreateRange, Entry: &m.entry, Targets: m.targets(), Duration: durations[m.selected].Value})
 	}
 	return m, nil
 }

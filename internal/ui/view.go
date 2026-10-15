@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,12 +36,7 @@ func countdown(seconds int64) string {
 }
 
 func (m Model) View() string {
-	const (
-		textEmpty = ""
-	)
-
-	const space, newline = " ", "\n"
-	const errorFormat, busy = "\n ⎿ %s\n", " Working…\n"
+	const space = " "
 	const quitKey, quitLabel = "q", "quit"
 	quit := keyHint{key: quitKey, label: quitLabel}
 	var body string
@@ -48,20 +44,14 @@ func (m Model) View() string {
 		const loading = " Connecting to daemon…\n"
 		body = space + m.spinner() + loading + m.keys(quit)
 	} else if m.screen == domainLocked {
-		return m.lockedView()
+		body = m.lockedView()
 	} else if !m.usable() {
 		const fault = " Changes unavailable.\n"
 		body = fault + m.keys(quit)
 	} else {
 		body = m.screenView()
 	}
-	if m.error != textEmpty {
-		body += m.ink(fmt.Sprintf(errorFormat, m.error), toneError, true)
-	}
-	if m.busy {
-		body += newline + space + m.spinner() + m.ink(busy, toneMuted, false)
-	}
-	return m.header() + newline + m.decorate(body)
+	return m.compose(body)
 }
 
 func (m Model) screenView() string {
@@ -74,10 +64,18 @@ func (m Model) screenView() string {
 		return m.domainMenuView()
 	case domainDelete:
 		return m.domainDeleteView()
+	case helpScreen:
+		return m.helpView()
+	case settingsScreen:
+		return m.settingsView()
+	case pickerScreen:
+		return m.pickerView()
+	case presetList:
+		return m.presetView()
 	case domainEdit:
 		return m.domainEditView()
 	case rangeList:
-		const header, digitKey, digitLabel, enterKey, enterLabel = " Select duration\n\n", "1–9", "choose", "↵", "select"
+		const header, digitKey, digitLabel, enterKey, enterLabel = " Select duration\n\n", "0–9", "choose", "↵", "select"
 		body := header
 		for index, choice := range durationChoices() {
 			body += m.row(index, choice.Label)
@@ -98,12 +96,12 @@ func (m Model) screenView() string {
 }
 
 func (m Model) row(index int, text string) string {
-	const normal, selected, format, one = " ", "❯", " %s %d. %s\n", 1
+	const normal, selected, format, one = " ", "❯", " %s %*d. %s\n", 1
 	marker := normal
 	if index == m.selected {
 		marker = selected
 	}
-	line := fmt.Sprintf(format, marker, index+one, text)
+	line := fmt.Sprintf(format, marker, m.numberWidth(), index+one, text)
 	if index == m.selected {
 		return m.selectedRow(line)
 	}
@@ -111,72 +109,65 @@ func (m Model) row(index int, text string) string {
 }
 
 func (m Model) domainEditView() string {
+	const rule = " Includes subdomains; facebook.com blocks only itself and www.\n"
 	const title, canonical, enterKey, enterLabel, escapeKey, escapeLabel = " Enter domain or URL:\n\n", " Will save: %s\n", "↵", "save", "esc", "back"
 	body := title + m.inputBox(m.domainText)
 	if domain, err := m.normalizer.Normalize(m.domainText); err == nil {
 		body += fmt.Sprintf(canonical, domain)
 	}
+	body += rule
 	return body + m.keys(keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})
 }
 
 func (m Model) windowListView() string {
 	const header, format = " Daily schedule\n\n", "%s to %s — %s"
 	const addKey, addLabel, editKey, editLabel, deleteKey, deleteLabel = "a", "add", "e", "edit", "d", "delete"
-	const active, waiting = "active", "waiting"
 	body := header
 	entry, _ := m.current()
 	for index, window := range entry.Windows {
-
-		const zero = 0
-		label := waiting
-		lock := &core.Lock{Kind: core.Daily, Zone: entry.Zone, Windows: []core.Window{window}}
-
-		if lock.Active(time.Unix(m.status.Now, zero)) {
-			label = active
-		}
-		body += m.row(index, fmt.Sprintf(format, formatMinute(window.Start), formatMinute(window.End), label))
+		body += m.row(index, fmt.Sprintf(format, formatMinute(window.Start), formatMinute(window.End), m.windowLabel(entry, window)))
 	}
 	return body + m.keys(keyHint{key: addKey, label: addLabel}, keyHint{key: editKey, label: editLabel}, keyHint{key: deleteKey, label: deleteLabel}, moveHint(), backHint())
 }
 
 func (m Model) windowEditView() string {
-	const (
-		textEmpty = ""
-	)
-
-	const header, format, appended = " Daily window\n\n", " %s  %s : %s  to  %s : %s\n", " Added: %s to %s\n"
+	const header, editHeader, appended, newline, space = " Daily window\n\n", " Edit daily window\n\n", " Added: %s to %s\n", "\n", " "
+	const labels, rowFormat, spanFormat = "   Start       End\n", "   %s : %s  →  %s : %s\n", " %s\n\n"
 	const plain, focus, zero, one, two, three = "%02d", "[%02d]", 0, 1, 2, 3
 	var fields [timeFieldCount]string
 	for index, value := range m.fields {
-		fieldFormat := plain
-		if index == m.field {
-			fieldFormat = focus
+		fields[index] = fmt.Sprintf(plain, value)
+		if index != m.field {
+			continue
 		}
-		fields[index] = fmt.Sprintf(fieldFormat, value)
-		if index == m.field {
-			fields[index] = m.ink(fields[index], toneConfirm, true)
+		if m.appearance.plain {
+			fields[index] = fmt.Sprintf(focus, value)
+		} else {
+			fields[index] = m.style(toneConfirm).Bold(true).Reverse(true).Render(fields[index])
 		}
 	}
 	body := header
 	if m.editingWindow {
-		const editHeader = " Edit daily window\n\n"
 		body = editHeader
 	}
 	for _, window := range m.windows {
 		body += fmt.Sprintf(appended, formatMinute(window.Start), formatMinute(window.End))
 	}
-	body += fmt.Sprintf(format, textEmpty, fields[zero], fields[one], fields[two], fields[three])
-	const fieldKey, fieldLabel, adjustKey, adjustLabel, digitKey, digitLabel = "h/l ←→", "field", "j/k ↑↓", "adjust", "0–9", "type"
-	const addKey, addLabel, enterKey, enterLabel, escapeKey, escapeLabel = "a", "add window", "↵", "save", "esc", "back"
+	current := m.currentWindow()
+	body += m.ink(labels, toneMuted, false) + fmt.Sprintf(rowFormat, fields[zero], fields[one], fields[two], fields[three]) + newline
+	body += m.timeline(current.Start, current.End) + m.ink(fmt.Sprintf(spanFormat, spanText(current.Start, current.End)), toneMuted, false)
+	const fieldKey, fieldLabel, adjustKey, adjustLabel, digitKey, digitLabel, addKey, addLabel = "h/l", "field", "j/k", "adjust", "0–9", "type", "a", "add another"
+	const enterKey, enterLabel, escapeKey, escapeLabel = "↵", "save", "esc", "back"
 	hints := []keyHint{{key: fieldKey, label: fieldLabel}, {key: adjustKey, label: adjustLabel}, {key: digitKey, label: digitLabel}}
 	if !m.editingWindow {
 		hints = append(hints, keyHint{key: addKey, label: addLabel})
 	}
-	return body + m.keys(append(hints, keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})...)
+	body += strings.TrimSuffix(m.keys(hints...), newline) + newline + space
+	return body + m.keys(keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})
 }
 
 func (m Model) confirmView() string {
-	const header, daily, rangeFormat, domainFormat, notice, inputFormat = " Confirm lock\n\n", " Daily: %s to %s\n", " Duration: %s\n Start: %s\n Estimated end: %s\n", " Domain: %s, including subdomains; facebook.com blocks only itself and www\n", "\n While the confirmed lock is active\n you cannot edit or delete this domain or its schedule.\n\n Type the code below (no paste):\n", "\n Code: %s — %s remaining\n"
+	const header, daily, rangeFormat, domainFormat, singularNotice, inputFormat = " Confirm lock\n\n", " Daily: %s to %s\n", " Duration: %s\n Start: %s\n Estimated end: %s\n", " Domain: %s, including subdomains; facebook.com blocks only itself and www\n", "\n While the confirmed lock is active\n you cannot edit or delete this domain or its schedule.\n\n Type the code below (no paste):\n", "\n Code: %s — %s remaining\n"
 	const placeholder, separator, codeLength, zero = "_", " ", 4, 0
 	const enterKey, enterLabel, escapeKey, escapeLabel = "↵", "confirm", "esc", "cancel"
 	if m.pending.Preview == nil {
@@ -195,7 +186,16 @@ func (m Model) confirmView() string {
 		span := state.Lock.EndAt - state.Lock.StartAt
 		body += fmt.Sprintf(rangeFormat, countdown(span), time.Unix(state.Lock.StartAt, zero).Format(time.RFC3339), time.Unix(state.Lock.EndAt, zero).Format(time.RFC3339))
 	}
-	body += fmt.Sprintf(domainFormat, state.Domain)
+	notice := singularNotice
+	if len(m.pending.Domains) > zero {
+		const listFormat = " Domains: %s, including subdomains\n"
+		const listSeparator = ", "
+		const pluralNotice = "\n While the confirmed lock is active\n you cannot edit or delete these domains or their schedules.\n\n Type the code below (no paste):\n"
+		body += fmt.Sprintf(listFormat, strings.Join(m.pending.Domains, listSeparator))
+		notice = pluralNotice
+	} else {
+		body += fmt.Sprintf(domainFormat, state.Domain)
+	}
 	body += notice + m.confirmCode()
 	var slots []string
 	for index := zero; index < codeLength; index++ {
@@ -219,4 +219,19 @@ func moveHint() keyHint {
 func backHint() keyHint {
 	const key, label = "h/q", "back"
 	return keyHint{key: key, label: label}
+}
+
+// Cảnh báo NTP: khóa vẫn giữ, chỉ thêm domain được.
+func (m Model) clockWarning() string {
+	const text, empty = " ⚠ Clock not synced: locks stay on; only adding domains works.\n", ""
+	if m.status.Error != core.ErrClockUnsync {
+		return empty
+	}
+	return m.ink(text, toneWarning, true)
+}
+
+// Độ rộng số thứ tự theo độ dài danh sách đang hiển thị, để các dòng thẳng cột.
+func (m Model) numberWidth() int {
+	const one = 1
+	return len(strconv.Itoa(max(m.listCount(), one)))
 }

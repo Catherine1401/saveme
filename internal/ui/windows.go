@@ -27,7 +27,7 @@ func (m Model) windowListKey(key KeyMsg) (Model, Cmd) {
 	m.selected = move(key.String(), m.selected, len(windows))
 	switch key.String() {
 	case add:
-		m.beginWindow()
+		return m.openPresets(), nil
 	case edit:
 		const minutes, zero = 60, 0
 		if len(windows) == zero {
@@ -144,5 +144,5 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 	for _, window := range windows {
 		inputs = append(inputs, core.InputWindow{Start: formatMinute(window.Start), End: formatMinute(window.End)})
 	}
-	return m.submit(core.Request{Cmd: core.CreateDaily, Entry: &m.entry, Windows: inputs})
+	return m.submit(core.Request{Cmd: core.CreateDaily, Entry: &m.entry, Targets: m.targets(), Windows: inputs})
 }

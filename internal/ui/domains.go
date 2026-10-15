@@ -8,33 +8,42 @@ import (
 )
 
 func (m Model) domainListKey(key KeyMsg) (Model, Cmd) {
-	const add, edit, remove, enter, empty, zero = "a", "e", "d", "enter", "", 0
+	const add, edit, remove, enter, help, search, mark, theme, empty, zero = "a", "e", "d", "enter", "?", "/", " ", "s", "", 0
 	const lockedDomain = "Locked domains cannot be edited or deleted."
 	entries := m.status.Entries
-	m.selected = move(key.String(), m.selected, len(entries))
+	m.selected = move(key.String(), m.selected, len(m.order()))
 	switch key.String() {
 	case add:
 		m.domainText, m.editingDomain, m.screen = empty, false, domainEdit
 		return m, nil
 	case enter:
 		return m.openDomain()
+	case help:
+		m.screen = helpScreen
+		return m, nil
+	case search:
+		m.searching, m.selected = true, zero
+		return m, nil
+	case mark:
+		return m.toggleMark(), nil
+	case theme:
+		return m.openSettings(), nil
 	}
-	if len(entries) == zero || (key.String() != edit && key.String() != remove) {
+	index, ok := m.selectedEntry()
+	if !ok || (key.String() != edit && key.String() != remove) {
 		return m, nil
 	}
-	selected := entries[m.selected]
+	selected := entries[index]
 	if selected.Active {
 		m.error = lockedDomain
 		return m, nil
 	}
-	m.entry = m.selected
+	m.entry = index
 	switch {
 	case key.String() == edit:
 		m.domainText, m.editingDomain, m.screen = selected.Domain, true, domainEdit
-	case scheduled(selected):
-		m.screen = domainDelete
 	default:
-		return m.submit(core.Request{Cmd: core.DeleteDomain, Index: &m.entry})
+		m.screen = domainDelete
 	}
 	return m, nil
 }

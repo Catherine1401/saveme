@@ -53,11 +53,17 @@ func (m Model) listCount() int {
 	const menuChoices, zero = 2, 0
 	switch m.screen {
 	case mainScreen:
-		return len(m.status.Entries)
+		return len(m.order())
 	case domainMenu:
 		return menuChoices
 	case rangeList:
 		return len(durationChoices())
+	case settingsScreen:
+		return settingCount
+	case pickerScreen:
+		return len(m.pickerOptions())
+	case presetList:
+		return len(presetChoices())
 	case windowList:
 		entry, _ := m.current()
 		return len(entry.Windows)

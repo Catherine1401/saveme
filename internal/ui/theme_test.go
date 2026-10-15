@@ -12,9 +12,9 @@ import (
 )
 
 func TestAnimationDoesNotCallDaemonOrChangeCountdown(t *testing.T) {
-	const now, end, frames, empty = 1000, 1060, 12, ""
+	const now, end, frames, empty, domain = 1000, 1060, 12, "", "example.com"
 	model := readyModel()
-	model.screen, model.status = domainLocked, core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: end}}}
+	model.screen, model.status = domainLocked, core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: domain, Active: true, EndAt: end}}}
 	before := model.status
 	client := model.client.(*recordingClient)
 	for range frames {
@@ -27,10 +27,10 @@ func TestAnimationDoesNotCallDaemonOrChangeCountdown(t *testing.T) {
 }
 
 func TestRepeatedLockedStatusDoesNotClearScreen(t *testing.T) {
-	const now, end = 1000, 1060
+	const now, end, domain = 1000, 1060, "example.com"
 	model := readyModel()
 	model.screen = domainMenu
-	response := core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: end}}}
+	response := core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: domain, Active: true, EndAt: end}}}
 	model, action := model.Update(reply{request: core.Request{Cmd: core.Status}, response: response})
 	if action == nil {
 		t.Fatal(response)

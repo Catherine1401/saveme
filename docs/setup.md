@@ -147,14 +147,23 @@ time, the next daily lock, or unlocked.
 3. Set the hours or select a duration. Type the displayed code one character at
    a time, then press Enter. Paste is rejected.
 
-Each domain has its own lock. Use arrow keys to select, Enter to open or save,
-and Esc to go back. On the domain list, `a` adds, `e` edits and `d` deletes.
-Adding is always allowed; editing or deleting a locked domain is refused.
-Deleting a domain with a stored schedule asks for confirmation and removes the
-schedule. In a daily window, left/right selects a field, up/down adjusts it, and
-`a` adds another window before confirmation. In the saved daily schedule, select
-a window and press `e` to edit its hours. Press Enter, review the schedule, and
-type the confirmation code to save.
+Each domain has its own lock. Locked domains are listed first, then domains
+with a schedule. Use arrow keys to select, Enter to open or save, and Esc to go
+back. On the domain list, `a` adds, `e` edits, `d` deletes, `/` filters the list
+and `?` shows every key. Adding is always allowed; editing or deleting a locked
+domain is refused. Deleting always asks for confirmation; a stored schedule is
+removed with its domain. Press space to mark several unlocked domains without a
+schedule, then open one of them: the daily schedule or timed lock you confirm
+applies to every marked domain. In a daily window, left/right selects a field,
+up/down adjusts it and `a` adds another window before confirmation. A new window
+starts from a choice of preset hours (night, work hours, late night, lunch or
+custom); the editor then shows the window on a 24-hour bar with its length and
+whether it crosses midnight. In the saved daily schedule, each window shows when it next
+starts or ends; select one and press `e` to edit its hours. Press Enter, review
+the schedule, and type the confirmation code to save. In the duration list, `0`
+selects the tenth choice. Action errors disappear after a few seconds. When the
+clock is not synchronized, a warning explains that locks stay on and only adding
+domains works.
 
 Opening a locked domain shows its countdown; `q` returns to the list and the
 daemon keeps enforcing the lock. Other domains remain editable. Timed choices
@@ -240,12 +249,31 @@ the project uses the latest major versions.
 
 ## Terminal appearance
 
-The TUI follows a Claude Code-like layout: a rounded header box with the domain
-and lock counts, `❯` marking the selected row, numbered choices, a rounded input
-box for domains, and one line of key hints separated by `·`. Unavailable keys
-show their reason in parentheses, and errors appear after `⎿`. It uses mint for
-selection, purple for confirmation and muted hints, with light and dark terminal
-backgrounds supported. Loading indicators animate;
+The TUI fills the terminal: a heading with the domain and lock counts at the
+top, the current screen below it, and messages and one line of key hints
+separated by `·` pinned to the bottom. The domain list aligns each domain's name, status and remaining time in columns; long domains are shortened with `…`, and long lists
+scroll with `↑ N more` / `↓ N more` markers. Content wider than
+120 columns is centered. Delete and confirmation prompts appear in a centered
+rounded box. `❯` marks the selected row, and errors appear after `⎿`. Colors follow
+Catppuccin: Mocha on dark terminals and Latte on light ones, with mauve for
+selection, green for confirmation and overlay grey for hints. Press `s` on the
+domain list to open Settings, where you choose the theme, the countdown clock
+style, the clock effects and whether the clock warns during the final minute.
+Moving through a list previews the choice, Enter saves it to
+`saveme/preferences.json` in your user configuration directory (`~/.config` on
+Linux, `%AppData%` on Windows) and Esc keeps the saved one. Run `saveme --theme
+NAME`, `--clock NAME` or `--clock-effects LIST` (comma-separated, or `none`) to change
+one for a session.
+Clock styles: half (default), block, rounded, classic, double, shade, dots, lcd,
+ascii and text. Effects can be combined; space toggles each one: blink (on by
+default), slide, flip, tick, fill (progress shown inside the digits), gradient,
+rainbow, shimmer, breathe, scanline, glitch, neon, sparkle and rain;
+`--no-motion` stops every moving effect and the warning pulse, keeping fill,
+gradient, a still rainbow and the neon outline. Themes:
+catppuccin, mint, dracula, gruvbox, solarized, tokyonight, rosepine, everforest,
+kanagawa, nightfox, flexoki, selenized, modus, ayu, nord and ansi (your
+terminal's own 16 colors).
+Loading indicators animate;
 confirmation feedback is brief. Animation never advances the lock clock or
 increases daemon polling. Your terminal font and color scheme stay unchanged.
 
@@ -271,9 +299,11 @@ increases and `j` decreases the value. Arrow keys remain available. Domain
 text and confirmation codes use normal text input. Outside input screens, `h`
 returns one level and `l` opens the selected item (or edits a saved window).
 
-The active-lock countdown uses large seven-segment digits centered in the
-terminal with heavy strokes and seven visible rows for every digit; small
-terminals use ordinary text. Confirmation displays the four
+The active-lock countdown shows the lock type (timed lock with its length, or
+the running daily window), the remaining days above large seven-segment digits,
+a progress bar with the elapsed share and the local unlock time. Without an
+unlock time it explains why: an unsynchronized clock or a schedule covering the
+whole day. Small terminals use ordinary text instead of large digits. Confirmation displays the four
 real characters in separate cells, using your existing terminal font.
 
 Outside input screens, `q` returns one level. From the domain list, it exits

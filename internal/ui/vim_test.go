@@ -8,8 +8,9 @@ import (
 
 func TestVimListNavigationEnabledByDefault(t *testing.T) {
 	const down, up, first, last, top, second, bottom = "j", "k", "g", "G", 0, 1, 2
+	const firstDomain, secondDomain, thirdDomain = "a.com", "b.com", "c.com"
 	model := readyModel()
-	model.status.Entries = []core.EntryStatus{{Domain: "a.com"}, {Domain: "b.com"}, {Domain: "c.com"}}
+	model.status.Entries = []core.EntryStatus{{Domain: firstDomain}, {Domain: secondDomain}, {Domain: thirdDomain}}
 	model, _ = model.Update(runeKey(down))
 	if model.selected != second {
 		t.Fatal(model.selected)
@@ -63,10 +64,10 @@ func TestVimTimeFieldsAndTextInput(t *testing.T) {
 }
 
 func TestVimDisabledEmptyAndLockedGuards(t *testing.T) {
-	const down, enter, last, selected, empty = "j", "enter", "G", 1, ""
+	const down, enter, last, selected, empty, first = "j", "enter", "G", 1, "", 0
 	model := readyModel()
 	model.screen = domainMenu
-	model.status.Entries[0].Kind = core.Daily
+	model.status.Entries[first].Kind = core.Daily
 	model, _ = model.Update(runeKey(down))
 	model, action := model.Update(control(enter))
 	if action != nil || model.screen != domainMenu || model.error == empty || model.selected != selected {

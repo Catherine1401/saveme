@@ -22,38 +22,10 @@ func (m Model) box(lines []string) string {
 		style = style.BorderForeground(m.style(toneMuted).GetForeground())
 	}
 	content := strings.Join(lines, newline)
-	if m.appearance.width > zero && lipgloss.Width(style.Render(content)) > m.appearance.width {
-		style = style.Width(m.appearance.width - horizontalBorder)
+	if m.appearance.width > zero && lipgloss.Width(style.Render(content)) > m.contentWidth() {
+		style = style.Width(m.contentWidth() - horizontalBorder)
 	}
 	return style.Render(content) + newline
-}
-
-// Khung tiêu đề kèm dòng tóm tắt số domain và số domain đang khóa.
-func (m Model) header() string {
-	const title, summary, one, plural = "✻ saveme", "%d domain%s · %d locked", 1, "s"
-	const zero, empty = 0, ""
-	color := toneAccent
-	if m.status.Active && m.appearance.flash > zero && !m.appearance.still {
-		color = toneShimmer
-	}
-	lines := []string{m.ink(title, color, true)}
-	if !m.ready {
-		return m.box(lines)
-	}
-	locked, suffix := zero, plural
-	for _, entry := range m.status.Entries {
-		if entry.Active {
-			locked++
-		}
-	}
-	if len(m.status.Entries) == one {
-		suffix = empty
-	}
-	tone := toneMuted
-	if !m.status.OK {
-		tone = toneWarning
-	}
-	return m.box(append(lines, m.ink(fmt.Sprintf(summary, len(m.status.Entries), suffix, locked), tone, false)))
 }
 
 // Footer gợi ý phím dạng "a add · e edit (locked) · q quit".

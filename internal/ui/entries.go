@@ -3,6 +3,9 @@ package ui
 import (
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 
 	"saveme/internal/core"
 )
@@ -24,10 +27,11 @@ func scheduled(entry core.EntryStatus) bool {
 
 func (m Model) openDomain() (Model, Cmd) {
 	const zero, empty = 0, ""
-	if m.selected >= len(m.status.Entries) {
+	index, ok := m.selectedEntry()
+	if !ok {
 		return m, nil
 	}
-	m.entry, m.error, m.screen = m.selected, empty, domainMenu
+	m.entry, m.error, m.screen = index, empty, domainMenu
 	if m.status.Entries[m.entry].Active {
 		m.screen = domainLocked
 	}
@@ -55,7 +59,8 @@ func (m Model) menuKey(key KeyMsg) (Model, Cmd) {
 		if scheduled(entry) {
 			m.screen = windowList
 		} else {
-			m.beginWindow()
+			m = m.openPresets()
+			return m, nil
 		}
 	} else {
 		if scheduled(entry) {
@@ -83,35 +88,51 @@ func (m Model) entryLabel(entry core.EntryStatus) string {
 }
 
 func (m Model) mainView() string {
-	const header, none, rowFormat = " Domains include subdomains; facebook.com blocks only itself and www\n\n", " No domains.\n", "%-*s  %s"
-	const addKey, addLabel, editKey, editLabel, deleteKey, deleteLabel = "a", "add", "e", "edit", "d", "delete"
-	const openKey, openLabel, quitKey, quitLabel, noDomains, locked, empty = "↵", "open", "q", "quit", "no domains", "locked", ""
-	const zero = 0
-	add, quit := keyHint{key: addKey, label: addLabel}, keyHint{key: quitKey, label: quitLabel}
-	body := header
+	const header = " Domains\n\n"
+	const welcome = " No domains yet.\n\n 1. Press a and type a site to block, e.g. youtube.com.\n 2. Open it with ↵.\n 3. Choose a daily schedule or a timed lock.\n"
+	const addKey, addLabel, openKey, openLabel, helpKey, helpLabel, quitKey, quitLabel = "a", "add", "↵", "open", "?", "help", "q", "quit"
+	const zero, empty = 0, ""
+	const searchFormat, cursor, noMatch = " / %s%s\n\n", "_", " No matching domains.\n"
+	const searchKey, searchLabel = "/", "search"
+	add, help, quit := keyHint{key: addKey, label: addLabel}, keyHint{key: helpKey, label: helpLabel}, keyHint{key: quitKey, label: quitLabel}
 	entries := m.status.Entries
 	if len(entries) == zero {
-		return body + none + m.keys(add, keyHint{key: editKey, label: editLabel, reason: noDomains}, keyHint{key: deleteKey, label: deleteLabel, reason: noDomains}, quit)
+		return welcome + m.keys(add, help, quit)
 	}
-	width := len(empty)
-	for _, entry := range entries {
-		width = max(width, len(entry.Domain))
+	body := header
+	if m.searching || m.filter != empty {
+		mark := empty
+		if m.searching {
+			mark = cursor
+		}
+		body += fmt.Sprintf(searchFormat, m.filter, mark)
 	}
-	for index, entry := range entries {
-		body += m.row(index, fmt.Sprintf(rowFormat, width, entry.Domain, m.entryLabel(entry)))
+	order := m.order()
+	if len(order) == zero {
+		body += noMatch
+	} else {
+		body += m.domainTable(order, m.contentWidth())
 	}
-	reason := empty
-	if m.selected < len(entries) && entries[m.selected].Active {
-		reason = locked
+	if len(m.marked) > zero {
+		const markedFormat = "\n %d marked · open one to lock them together · esc clears\n"
+		body += fmt.Sprintf(markedFormat, len(m.marked))
 	}
-	return body + m.keys(add, keyHint{key: editKey, label: editLabel, reason: reason}, keyHint{key: deleteKey, label: deleteLabel, reason: reason}, keyHint{key: openKey, label: openLabel}, moveHint(), quit)
+	if m.searching {
+		const enterKey, enterLabel, escapeKey, escapeLabel = "↵", "keep filter", "esc", "clear"
+		return body + m.keys(keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})
+	}
+	return body + m.keys(add, keyHint{key: openKey, label: openLabel}, keyHint{key: searchKey, label: searchLabel}, help, quit)
 }
 
 func (m Model) domainMenuView() string {
 	const header, digitKey, digitLabel, enterKey, enterLabel = " %s  %s\n\n", "1–2", "choose", "↵", "select"
-	const dailyLabel, rangeLabel, timedIndex, reason = "Daily schedule", "Timed lock", 1, "delete the daily schedule first"
+	const dailyLabel, rangeLabel, timedIndex, reason, zero = "Daily schedule", "Timed lock", 1, "delete the daily schedule first", 0
 	entry, _ := m.current()
 	body := fmt.Sprintf(header, entry.Domain, m.entryLabel(entry))
+	if extra := len(m.targets()); extra > zero && !scheduled(entry) {
+		const groupFormat = " Also locks %d marked domain(s).\n\n"
+		body += fmt.Sprintf(groupFormat, extra)
+	}
 	for index, label := range []string{dailyLabel, rangeLabel} {
 		if index == timedIndex && scheduled(entry) {
 			body += m.disabledRow(index, label, reason)
@@ -123,7 +144,39 @@ func (m Model) domainMenuView() string {
 }
 
 func (m Model) domainDeleteView() string {
-	const text, enterKey, enterLabel = " Deleting %s also removes its schedule.\n", "↵", "confirm"
+	const plain, withSchedule, enterKey, enterLabel = " Delete %s?\n", " Deleting %s also removes its schedule.\n", "↵", "delete"
 	entry, _ := m.current()
+	text := plain
+	if scheduled(entry) {
+		text = withSchedule
+	}
 	return fmt.Sprintf(text, entry.Domain) + m.keys(keyHint{key: enterKey, label: enterLabel}, backHint())
+}
+
+// Màn trợ giúp liệt kê mọi phím và quy tắc chặn domain; phím tô màu nhấn, mô tả màu chữ thường.
+func (m Model) helpView() string {
+	const title, rule, keyWidth, newline, space = " Keys\n\n", " Domains include subdomains; facebook.com blocks only itself and www.\n", 9, "\n", " "
+	const addKey, addLabel, editKey, editLabel = "a", "add a domain", "e", "edit the selected domain (unlocked only)"
+	const deleteKey, deleteLabel, openKey, openLabel = "d", "delete the selected domain (unlocked only)", "↵ / l", "open the selected domain"
+	const filterKey, filterLabel, markKey, markLabel = "/", "filter domains; esc clears", "space", "mark domains to lock together; esc clears"
+	const moveKey, moveLabel, backKey, backLabel = "j/k ↑↓", "move · gg / G first / last", "h / q", "back · q on the list quits"
+	const settingsKey, settingsLabel, helpKey, helpLabel = "s", "settings: theme, clock style and effects", "?", "this help"
+	rows := []keyHint{
+		{key: addKey, label: addLabel},
+		{key: editKey, label: editLabel},
+		{key: deleteKey, label: deleteLabel},
+		{key: openKey, label: openLabel},
+		{key: filterKey, label: filterLabel},
+		{key: markKey, label: markLabel},
+		{key: moveKey, label: moveLabel},
+		{key: backKey, label: backLabel},
+		{key: settingsKey, label: settingsLabel},
+		{key: helpKey, label: helpLabel},
+	}
+	body := title
+	for _, row := range rows {
+		padded := row.key + strings.Repeat(space, max(keyWidth-lipgloss.Width(row.key), len(space)))
+		body += space + m.ink(padded, toneAccent, true) + m.ink(row.label, toneText, false) + newline
+	}
+	return body + newline + m.ink(rule, toneMuted, false) + m.keys(backHint())
 }

@@ -18,12 +18,21 @@ func main() {
 	const empty = ""
 	const statusFlag, statusHelp = "status", "Print daemon status as JSON"
 	const motionFlag, motionHelp, colorFlag, colorHelp, colorEnv = "no-motion", "Disable UI animation", "no-color", "Disable UI colors", "NO_COLOR"
+	const themeFlag, themeHelp, clockFlag, clockHelp, effectFlag, effectHelp = "theme", "Color theme for this session; press s in the UI to save one", "clock", "Countdown clock style for this session", "clock-effects", "Comma-separated countdown clock effects for this session, or none"
 	still := flag.Bool(motionFlag, no, motionHelp)
 	plain := flag.Bool(colorFlag, no, colorHelp)
 	socket := flag.String(socketFlag, config.DefaultSocket, socketHelp)
 	demo := flag.Bool(demoFlag, no, demoHelp)
 	status := flag.Bool(statusFlag, no, statusHelp)
+	theme := flag.String(themeFlag, empty, themeHelp)
+	clock := flag.String(clockFlag, empty, clockHelp)
+	effect := flag.String(effectFlag, empty, effectHelp)
 	flag.Parse()
+	settings, err := sessionSettings(config.LoadPreferences(), *theme, *clock, *effect)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(failure)
+	}
 	if *demo {
 		*socket = config.Demo().Socket
 	}
@@ -40,7 +49,7 @@ func main() {
 		}
 		return
 	}
-	program := tea.NewProgram(terminal{model: ui.New(client, domain.Normalizer{}).Appearance(*plain || os.Getenv(colorEnv) != empty, *still)}, tea.WithAltScreen())
+	program := tea.NewProgram(terminal{model: ui.New(client, domain.Normalizer{}).Appearance(*plain || os.Getenv(colorEnv) != empty, *still).Configure(settings, saveSettings)}, tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(failure)

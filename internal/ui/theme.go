@@ -8,12 +8,17 @@ import (
 )
 
 type appearance struct {
-	plain  bool
-	still  bool
-	frame  int
-	flash  int
-	width  int
-	height int
+	plain   bool
+	still   bool
+	frame   int
+	flash   int
+	width   int
+	height  int
+	palette palette
+	clock   clockStyle
+	effects []string
+	warning bool
+	now     time.Time
 }
 
 type animationFrame time.Time
@@ -49,25 +54,33 @@ const (
 )
 
 func (m Model) style(role tone) lipgloss.Style {
-	const mint, violet, faint, red, warning, shimmer = "#78E2BF", "#BEA5F6", "#89909F", "#F38BA8", "#E9C46A", "#C8F8E8"
-	const lightMint, lightViolet, lightFaint, lightRed, lightWarning, lightShimmer = "#176B50", "#7042AB", "#626978", "#A72A47", "#855D0E", "#247C61"
-	color := lipgloss.AdaptiveColor{Light: lightFaint, Dark: faint}
-	switch role {
-	case toneText:
-		const darkText, lightText = "#DEE3EB", "#212121"
-		color = lipgloss.AdaptiveColor{Light: lightText, Dark: darkText}
-	case toneAccent:
-		color = lipgloss.AdaptiveColor{Light: lightMint, Dark: mint}
-	case toneConfirm:
-		color = lipgloss.AdaptiveColor{Light: lightViolet, Dark: violet}
-	case toneError:
-		color = lipgloss.AdaptiveColor{Light: lightRed, Dark: red}
-	case toneWarning:
-		color = lipgloss.AdaptiveColor{Light: lightWarning, Dark: warning}
-	case toneShimmer:
-		color = lipgloss.AdaptiveColor{Light: lightShimmer, Dark: shimmer}
+	const none, first = "", 0
+	theme := m.appearance.palette
+	if theme.name == none {
+		theme = palettes()[first]
 	}
-	return lipgloss.NewStyle().Foreground(color)
+	pick := func(set shades) string {
+		switch role {
+		case toneText:
+			return set.text
+		case toneAccent:
+			return set.accent
+		case toneConfirm:
+			return set.confirm
+		case toneError:
+			return set.fault
+		case toneWarning:
+			return set.warning
+		case toneShimmer:
+			return set.shimmer
+		}
+		return set.muted
+	}
+	dark, light := pick(theme.dark), pick(theme.light)
+	if dark == none {
+		return lipgloss.NewStyle()
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: light, Dark: dark})
 }
 
 func (m Model) ink(text string, role tone, bold bool) string {
@@ -115,7 +128,7 @@ func (m Model) decorate(body string) string {
 	}
 	content := strings.Join(lines, newline)
 	if m.appearance.width > zero {
-		return lipgloss.NewStyle().Width(m.appearance.width).Render(content)
+		return lipgloss.NewStyle().Width(m.contentWidth()).Render(content)
 	}
 	return space + strings.ReplaceAll(content, newline, newline+space)
 }

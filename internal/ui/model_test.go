@@ -47,10 +47,10 @@ func TestLockedViewHidesEveryMenu(t *testing.T) {
 		textA      = "a"
 	)
 
-	const protected, menu, daily = "example.com is blocked", "Timed lock", "Daily schedule"
+	const protected, menu, daily, domain = "example.com is blocked", "2. Timed lock", "1. Daily schedule", "example.com"
 	model := readyModel()
 	model.screen = domainMenu
-	model, _ = model.Update(reply{request: core.Request{Cmd: core.Status}, response: core.Response{OK: true, Now: number1000, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: number1060}}}})
+	model, _ = model.Update(reply{request: core.Request{Cmd: core.Status}, response: core.Response{OK: true, Now: number1000, Entries: []core.EntryStatus{{Domain: domain, Active: true, EndAt: number1060}}}})
 	view := model.View()
 	if model.screen != domainLocked || !strings.Contains(view, protected) || strings.Contains(view, menu) || strings.Contains(view, daily) {
 		t.Fatal(view)
@@ -200,9 +200,9 @@ func TestWindowsOverlapAndLastWindowConfirmation(t *testing.T) {
 		textEnter  = "enter"
 	)
 
-	const zone = "UTC"
+	const zone, domain, first = "UTC", "example.com", 0
 	model := readyModel()
-	model.status.Entries[0] = core.EntryStatus{Domain: "example.com", Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: number1320, End: number360}}}
+	model.status.Entries[first] = core.EntryStatus{Domain: domain, Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: number1320, End: number360}}}
 	model.screen = windowList
 	model, action := model.Update(runeKey(textD))
 	if model.screen != lastWindow || action != nil {
