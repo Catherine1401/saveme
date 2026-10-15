@@ -10,7 +10,7 @@ If none exists yet, use [the source build](#build-from-source).
 - Linux with a running systemd and enabled IPv6 loopback.
 - An ordinary account with sudo access.
 - Bash, curl, tar, sha256sum, awk and coreutils.
-- systemctl, timedatectl, chattr, useradd, runuser and ss.
+- systemctl, timedatectl, chattr, useradd, runuser, flock and ss.
 - A state filesystem supporting immutable files.
 - Free `127.0.0.1:53`, `[::1]:53` and `127.0.0.1:5353`, UDP/TCP.
 
@@ -85,16 +85,28 @@ binaries and the version receipt. Unversioned source updates remove the receipt.
 Configuration, state, browser policies,
 the service unit and its drop-ins remain in place.
 
-Updates refuse any stored timed lock or daily schedule, including daily schedules
-outside their active window. Wait for a timed lock to expire; remove a daily
-schedule through the TUI outside its active window. The updater checks stored
-state before stopping the daemon and again after it stops. A lock created between
-those checks causes rejection and a restart with the previous binaries.
+The Linux updater in `v0.1.0` supports active timed locks and daily schedules, including
+updates while NTP is untrusted. It takes an exclusive update lock, pauses
+mutations, stops the daemon without clearing its nftables rules, then snapshots
+the validated commitment before replacing either binary. After restart it checks
+stored domains, each lock, the clock floor, owner status, nftables rules and blocked
+UDP/TCP DNS responses. A timed lock may expire normally when NTP is trusted.
 
-The updater saves the old binaries and restores them if the replacement fails
-its readiness check. State is never reset. A new daemon can make normal state
-writes during startup, so preserving state does not mean byte-identical files.
-Updates restart the daemon; use them only when no commitment is configured.
+If startup or verification fails, the updater restores the previous binaries,
+version receipt and saved commitment, preserving any newer valid clock floor,
+then restarts and verifies the previous daemon. If recovery fails, it reports the
+retained recovery directory; do not delete it or reset state. Configuration,
+browser policies, the service unit and its drop-ins are preserved.
+
+DNS can be briefly unavailable while the daemon restarts. This does not reset
+existing browser connections or provide protection against root changing the
+system. State generations and checksums can change during normal startup or
+recovery; preservation refers to the commitment, not identical file bytes.
+
+Releases `v0.0.1` and `v0.0.2` contain the previous updater, which refuses stored
+locks. Downloading a newer installer does not change an older bundle's update
+script. The `v0.1.0` Linux snapshot updater requires version 2 state and refuses
+version 1 before stopping the service; it does not migrate older installations.
 
 This also supports the existing source installation when its configuration and
 state remain valid. No valid stored state, an unavailable socket, wrong owner
@@ -126,9 +138,27 @@ sudo bash deploy/install.sh "$USER"
 saveme
 ```
 
-Run `make test check` before deploying local changes. Source installation uses
-the same service checks and conflict refusal as binary installation. To update
-from a built checkout, run `sudo bash deploy/update.sh "$USER"`.
+Source installation uses the same service checks and conflict refusal as binary
+installation. After changing local code, run as the ordinary managing account:
+
+```sh
+make update
+saveme
+```
+
+`make update` runs tests, vet and build in order, then uses sudo to call the
+existing updater. A failed step stops the update. The updater checks the service
+and socket, then verifies the preserved commitment and enforcement after restart.
+Active locks do not prevent updating. Configuration, state, policies and service
+drop-ins stay in place.
+To update binaries you already built and checked, run
+`sudo bash deploy/update.sh "$USER"`.
+
+The source Linux updater verifies each domain's commitment after restart and
+rolls back on verification failure. It requires version 2 state and refuses
+legacy version 1 state before stopping the service; rollback to a version 1
+daemon is not supported by this snapshot path. Windows updates and uninstall
+retain the stored-lock refusal guard.
 
 ## Windows
 
@@ -166,7 +196,7 @@ Chromium and Firefox through registry policies. It refuses an existing
 installation. Run `"%ProgramFiles%\saveme\saveme.exe"` as the selected account.
 
 To update, extract the new bundle and run `deploy\windows\update.ps1` from an
-elevated PowerShell. Like Linux, it refuses while any domain has a stored lock
+elevated PowerShell. It refuses while any domain has a stored lock
 and restores the previous binaries and state if the new service does not start.
 Service logs are written to `C:\ProgramData\saveme\saved.log`.
 
@@ -180,9 +210,9 @@ the lock. An Administrator can remove the rules or stop the service.
 
 ## Uninstall
 
-Removal is refused while any domain has a stored lock or daily schedule, the
-same rule as updates. Wait for timed locks to expire and delete daily schedules
-first.
+Removal is refused while any domain has a stored lock or daily schedule,
+including when Linux updates are allowed. Wait for timed locks to expire and
+delete daily schedules first.
 
 Linux, as your ordinary account:
 

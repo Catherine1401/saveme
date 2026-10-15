@@ -25,18 +25,19 @@ type Pending struct {
 }
 
 type Engine struct {
-	mu           sync.Mutex
-	state        core.State
-	pending      *Pending
-	clock        core.Clock
-	repo         Repository
-	enforcer     Enforcer
-	normalizer   Normalizer
-	zone         string
-	lastSaved    int64
-	health       error
-	storageFault bool
-	fixedCode    string
+	UpdatePending func() bool
+	mu            sync.Mutex
+	state         core.State
+	pending       *Pending
+	clock         core.Clock
+	repo          Repository
+	enforcer      Enforcer
+	normalizer    Normalizer
+	zone          string
+	lastSaved     int64
+	health        error
+	storageFault  bool
+	fixedCode     string
 }
 
 func New(state core.State, clock core.Clock, repo Repository, enforcer Enforcer, normalizer Normalizer, zone string) (*Engine, error) {
@@ -65,6 +66,9 @@ func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
 	refreshErr := e.refresh(now, false)
 	if req.Cmd == core.Status {
 		return e.status(now)
+	}
+	if e.UpdatePending != nil && e.UpdatePending() {
+		return failure(core.ErrLocked, now)
 	}
 	if e.targetActive(req, owner, now) {
 		return failure(core.ErrLocked, now)

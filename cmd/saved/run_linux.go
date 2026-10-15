@@ -39,6 +39,7 @@ func runProtected(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
+	engine.UpdatePending = updatePending
 	resolver := &dns.Resolver{Blocker: filter, Upstreams: []string{proxyAddress}}
 	service, err := dns.Listen([]string{v4, v6}, resolver)
 	if err != nil {
