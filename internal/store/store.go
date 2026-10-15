@@ -219,10 +219,5 @@ func (s *Store) replace(path string, data []byte) error {
 			return fmt.Errorf(label, err)
 		}
 	}
-	dir, err := os.Open(s.dir)
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-	return dir.Sync()
+	return syncDir(s.dir)
 }
