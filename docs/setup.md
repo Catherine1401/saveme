@@ -108,32 +108,40 @@ production service never enables demo mode.
 
 For a first walkthrough:
 
-1. Open Edit domains, add `https://www.Example.com/a`, and confirm the saved
-   domain is `example.com`.
-2. Return to the menu, choose Timed lock, and select 12 hours.
-3. Type the four-character code slowly and press Enter. The menu should be
-   replaced by a countdown. Pasting the code should be rejected.
-4. Quit and reopen the demo TUI. The lock should still be active.
+1. On the domain list, press `a`, add `https://www.Example.com/a`, and confirm
+   the saved domain is `example.com`. Add `example.org` the same way.
+2. Open `example.com` with Enter, choose Timed lock, and select 12 hours.
+3. Type the four-character code slowly and press Enter. Pasting the code should
+   be rejected. The list should show `example.com` locked with its remaining
+   time and `example.org` unlocked; `e` and `d` are refused only on
+   `example.com`.
+4. Open `example.com` with Enter to see its countdown, then press `q` to return.
+5. Quit and reopen the demo TUI. The lock should still be active.
 
 Demo mode proves the interface flow, not network blocking.
 
 ## Use
 
-1. Choose Edit domains (`3`), press `a`, enter a domain or URL, then press Enter.
-2. Press Esc. Choose Daily schedule (`1`) or Timed lock (`2`).
+The main screen lists every domain with its state: locked with the remaining
+time, the next daily lock, or unlocked.
+
+1. Press `a`, enter a domain or URL, then press Enter.
+2. Select a domain and press Enter. Choose Daily schedule (`1`) or Timed lock (`2`).
 3. Set the hours or select a duration. Type the displayed code one character at
    a time, then press Enter. Paste is rejected.
 
-Use arrow keys to select, Enter to save, and Esc to go back. In the domain list,
-`a` adds, `e` edits and `d` deletes. In a daily window, left/right selects a field,
-up/down adjusts it, and `a` adds another window before confirmation. In the saved
-daily schedule, select a window and press `e` to edit its hours. Press Enter,
-review the complete schedule, and type the confirmation code to save. Edits are
-refused while blocking is active.
+Each domain has its own lock. Use arrow keys to select, Enter to open or save,
+and Esc to go back. On the domain list, `a` adds, `e` edits and `d` deletes.
+Adding is always allowed; editing or deleting a locked domain is refused.
+Deleting a domain with a stored schedule asks for confirmation and removes the
+schedule. In a daily window, left/right selects a field, up/down adjusts it, and
+`a` adds another window before confirmation. In the saved daily schedule, select
+a window and press `e` to edit its hours. Press Enter, review the schedule, and
+type the confirmation code to save.
 
-When locked, the menu disappears. `q` exits the UI; the daemon keeps enforcing
-it. Outside active daily windows, you can edit domains and schedules. Timed
-choices are 1, 2, 4, 6 or 12 hours, or 1, 3, 7, 14 or 30 days.
+Opening a locked domain shows its countdown; `q` returns to the list and the
+daemon keeps enforcing the lock. Other domains remain editable. Timed choices
+are 1, 2, 4, 6 or 12 hours, or 1, 3, 7, 14 or 30 days.
 
 ## Limits
 
@@ -151,9 +159,13 @@ are described below.
 
 Daily windows include their start and exclude their end. They can cross midnight,
 can touch but cannot overlap. A schedule covering the entire day has no automatic
-unlock time. A timed lock starts when confirmation succeeds. Delete the daily
-schedule before creating a timed lock; delete the schedule before removing its
-last domain.
+unlock time. A timed lock starts when confirmation succeeds. Each domain holds
+at most one lock; delete a domain's daily schedule before giving it a timed
+lock. Only domains whose lock is active are blocked. While the clock is not
+synchronized with NTP, every stored lock stays active and only adding domains
+is accepted. Updating the binaries is refused while any domain has a stored
+lock. State from earlier versions, which shared one lock across all domains, is
+converted on load by giving each domain a copy of that lock.
 
 Domains are lowercased, converted through IDNA and stripped of a leading `www.`.
 The `facebook.com` entry blocks only the apex and `www.facebook.com`; separately
@@ -211,8 +223,12 @@ the project uses the latest major versions.
 
 ## Terminal appearance
 
-The TUI uses mint for selection, purple for confirmation and muted hints, with
-light and dark terminal backgrounds supported. Loading indicators animate;
+The TUI follows a Claude Code-like layout: a rounded header box with the domain
+and lock counts, `❯` marking the selected row, numbered choices, a rounded input
+box for domains, and one line of key hints separated by `·`. Unavailable keys
+show their reason in parentheses, and errors appear after `⎿`. It uses mint for
+selection, purple for confirmation and muted hints, with light and dark terminal
+backgrounds supported. Loading indicators animate;
 confirmation feedback is brief. Animation never advances the lock clock or
 increases daemon polling. Your terminal font and color scheme stay unchanged.
 
@@ -236,13 +252,13 @@ Vim navigation is always enabled: `j`/`k` move through lists, `gg`/`G` jump
 to the first/last item, and `h`/`l` select time fields. In time fields, `k`
 increases and `j` decreases the value. Arrow keys remain available. Domain
 text and confirmation codes use normal text input. Outside input screens, `h`
-returns one level and `l` opens the selected item (or edits a saved domain/window).
+returns one level and `l` opens the selected item (or edits a saved window).
 
 The active-lock countdown uses large seven-segment digits centered in the
 terminal with heavy strokes and seven visible rows for every digit; small
 terminals use ordinary text. Confirmation displays the four
 real characters in separate cells, using your existing terminal font.
 
-Outside input screens, `q` returns one level. From the main menu or active-lock
-screen, it exits the TUI. When entering a domain, time or confirmation code,
+Outside input screens, `q` returns one level. From the domain list, it exits
+the TUI; from a locked domain's countdown, it returns to the list. When entering a domain, time or confirmation code,
 `q` does not navigate or quit. Use Esc to cancel input.

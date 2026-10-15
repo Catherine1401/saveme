@@ -19,8 +19,8 @@ saveme
 
 ## Features
 
-- Daily schedules and 1h–30d timed locks.
-- Active locks prevent changes to domains and schedules.
+- A separate daily schedule or 1h–30d timed lock for each domain.
+- A locked domain and its schedule cannot be edited or deleted; other domains stay editable.
 - Locks survive closing the terminal and daemon restarts.
 
 ## License
