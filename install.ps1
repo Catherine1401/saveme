@@ -1,14 +1,16 @@
 # Tải gói saveme cho Windows đã kiểm SHA-256 rồi chạy bộ cài trong gói; cần PowerShell quyền Administrator.
 param(
-    [string]$User = $env:USERNAME,
+    [string]$User = '',
     [string]$Version = '',
     [switch]$Update,
     [string]$Archive = '',
     [string]$Checksums = '',
-    [switch]$Help
+    [switch]$Help,
+    [switch]$Elevated
 )
 $ErrorActionPreference = 'Stop'
 $Base = 'https://github.com/Catherine1401/saveme/releases'
+$ScriptUrl = 'https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1'
 $TagPattern = '^v?[0-9]+\.[0-9]+\.[0-9]+$'
 $ChecksumName = 'checksums.txt'
 $Members = @('bin\saveme.exe', 'bin\saved.exe', 'deploy\windows\install.ps1', 'deploy\windows\update.ps1',
@@ -17,8 +19,9 @@ $Usage = @'
 Usage: install.ps1 [-User ACCOUNT] [-Version vX.Y.Z] [-Update]
        install.ps1 -Version vX.Y.Z -Archive FILE -Checksums FILE
 
-Downloads a verified Windows bundle and runs its installer. Run from an elevated
-PowerShell. -User selects the ordinary account that manages locks. -Update keeps
+Downloads a verified Windows bundle and runs its installer. Run from a normal
+PowerShell; it asks for administrator rights through UAC. -User selects the
+ordinary account that manages locks and defaults to the current account. -Update keeps
 configuration, state and policies and requires no stored lock. Offline bundles
 require -Archive, -Checksums and -Version.
 '@
@@ -66,12 +69,37 @@ function Expand-Bundle([string]$Path, [string]$Destination) {
     }
 }
 
+# Mở lại script với quyền Administrator qua UAC, giữ tài khoản và tham số ban đầu; trả exit code của tiến trình đó.
+function Invoke-Elevated([string]$Account) {
+    $quoted = { param($value) "'" + $value.Replace("'", "''") + "'" }
+    $call = "-User $(& $quoted $Account) -Elevated"
+    if ($Version) { $call += " -Version $(& $quoted $Version)" }
+    if ($Update) { $call += ' -Update' }
+    if ($Archive) { $call += " -Archive $(& $quoted (Resolve-Path $Archive).Path) -Checksums $(& $quoted (Resolve-Path $Checksums).Path)" }
+    $source = "[scriptblock]::Create((Invoke-RestMethod -UseBasicParsing $(& $quoted $ScriptUrl)))"
+    if ($PSCommandPath) { $source = "[scriptblock]::Create((Get-Content -Raw $(& $quoted $PSCommandPath)))" }
+    $command = "[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; & ($source) $call"
+    $process = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -Verb RunAs -Wait -PassThru `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $command)
+    return $process.ExitCode
+}
+
 if ($Help) { Write-Output $Usage; return }
+if (-not $User) { $User = "$env:USERDOMAIN\$env:USERNAME" }
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    throw 'Run from an elevated PowerShell (Run as administrator).'
+    $code = Invoke-Elevated $User
+    if ($code -ne 0) { throw "Installation failed with exit code $code." }
+    return
 }
-if (-not $User) { throw 'Select the ordinary account with -User.' }
+# Cửa sổ quyền admin tự đóng khi xong; giữ lại để đọc lỗi nếu thất bại.
+if ($Elevated) {
+    trap {
+        Write-Host $_ -ForegroundColor Red
+        Read-Host 'Installation failed. Press Enter to close' | Out-Null
+        exit 1
+    }
+}
 $offline = $Archive -or $Checksums
 if ($offline -and -not ($Archive -and $Checksums -and $Version -and (Test-Path $Archive) -and (Test-Path $Checksums))) {
     throw 'Offline install needs -Archive, -Checksums and -Version.'

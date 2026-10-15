@@ -138,13 +138,15 @@ an Administrator account to install, an ordinary account to manage locks, the
 Windows Time service synchronized with a network source, and free
 `127.0.0.1:53` and `[::1]:53`.
 
-From an elevated PowerShell, the bootstrap script downloads the bundle for
-your architecture, verifies it against `checksums.txt` and runs its installer.
-Add `-Version vX.Y.Z` to pin a release, `-Update` to update, or
-`-Version vX.Y.Z -Archive FILE -Checksums FILE` for an offline bundle:
+From a normal PowerShell, the bootstrap script asks for administrator rights
+through UAC, downloads the bundle for your architecture, verifies it against
+`checksums.txt` and runs its installer for the current account. Add
+`-User ACCOUNT` to select another account, `-Version vX.Y.Z` to pin a release,
+`-Update` to update, or `-Version vX.Y.Z -Archive FILE -Checksums FILE` for an
+offline bundle:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1))) -User <account>
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1)))
 ```
 
 To install manually instead, download `saveme_<version>_windows_<arch>.zip`

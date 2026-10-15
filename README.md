@@ -8,17 +8,25 @@
 
 ## Install
 
-Linux · systemd · sudo
+Pick the block for your system.
+
+### Linux (bash)
+
+Requires systemd and sudo. Run as your ordinary account:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Catherine1401/saveme/main/install.sh | bash
 saveme
 ```
 
-Windows (experimental), from an elevated PowerShell:
+### Windows (PowerShell, experimental)
+
+Paste into a normal PowerShell and accept the administrator prompt. The current
+account becomes the one that manages locks:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1))) -User <account>
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1)))
+& "$env:ProgramFiles\saveme\saveme.exe"
 ```
 
 [Install options](docs/install.md) · [Usage](docs/setup.md#use) · [Releases](https://github.com/Catherine1401/saveme/releases) · [Limits](docs/setup.md#limits)
