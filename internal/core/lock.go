@@ -62,6 +62,26 @@ func (l *Lock) Transition(now time.Time) int64 {
 	return zero
 }
 
+// Thời điểm bắt đầu của đợt khóa đang chạy; 0 khi không khóa hoặc lịch khóa liên tục.
+func (l *Lock) WindowStart(now time.Time) int64 {
+	const zero, horizonMinutes = 0, 8 * 1440
+	if l == nil || !l.Active(now) {
+		return zero
+	}
+	if l.Kind == Range {
+		return l.StartAt
+	}
+	cursor := now.Truncate(time.Minute)
+	for checked := zero; checked < horizonMinutes; checked++ {
+		previous := cursor.Add(-time.Minute)
+		if !l.Active(previous) {
+			return cursor.Unix()
+		}
+		cursor = previous
+	}
+	return zero
+}
+
 func (s State) Validate() error {
 	const zero = 0
 	if s.Version != StateVersion || s.MaxSeen < zero {

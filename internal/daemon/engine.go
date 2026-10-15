@@ -16,6 +16,7 @@ type Pending struct {
 	Op       core.Command
 	Entry    int
 	Domain   string
+	Targets  []target
 	Lock     core.Lock
 	Code     string
 	ExpireAt int64
@@ -134,7 +135,7 @@ func (e *Engine) entryStatus(entry core.Entry, now time.Time) core.EntryStatus {
 	item.Kind, item.Zone = entry.Lock.Kind, entry.Lock.Zone
 	transition := entry.Lock.Transition(now)
 	if item.Active && e.clock.Trusted() {
-		item.EndAt = transition
+		item.StartAt, item.EndAt = entry.Lock.WindowStart(now), transition
 	} else if !item.Active {
 		item.NextAt = transition
 		item.Windows = append([]core.Window{}, entry.Lock.Windows...)

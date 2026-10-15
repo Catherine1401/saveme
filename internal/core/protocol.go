@@ -31,6 +31,7 @@ type Request struct {
 	Domain    string        `json:"domain,omitempty"`
 	Index     *int          `json:"index,omitempty"`
 	Entry     *int          `json:"entry,omitempty"`
+	Targets   []int         `json:"targets,omitempty"`
 	Confirmed bool          `json:"confirmed,omitempty"`
 }
 
@@ -46,6 +47,7 @@ type Response struct {
 	ExpiresIn int64         `json:"expires_in,omitempty"`
 	Failures  int           `json:"failures,omitempty"`
 	Preview   *Entry        `json:"preview,omitempty"`
+	Domains   []string      `json:"preview_domains,omitempty"`
 }
 
 type EntryStatus struct {
@@ -53,6 +55,7 @@ type EntryStatus struct {
 	Active  bool     `json:"active"`
 	Kind    Kind     `json:"kind,omitempty"`
 	Zone    string   `json:"zone,omitempty"`
+	StartAt int64    `json:"start_at,omitempty"`
 	EndAt   int64    `json:"end_at,omitempty"`
 	NextAt  int64    `json:"next_at,omitempty"`
 	Windows []Window `json:"windows,omitempty"`

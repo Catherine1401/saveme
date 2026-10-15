@@ -89,6 +89,10 @@ func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Res
 	if err != nil {
 		return failure(err, now)
 	}
+	targets, err := e.targets(req, now)
+	if err != nil {
+		return failure(err, now)
+	}
 
 	previous := empty
 	if e.pending != nil {
@@ -98,13 +102,21 @@ func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Res
 	if err != nil {
 		return failure(err, now)
 	}
-	e.pending = &Pending{Op: req.Cmd, Entry: *req.Entry, Domain: e.state.Entries[*req.Entry].Domain, Lock: lock, Code: code, ExpireAt: now.Unix() + lifetime, Owner: owner}
+	e.pending = &Pending{Op: req.Cmd, Entry: *req.Entry, Domain: e.state.Entries[*req.Entry].Domain, Targets: targets, Lock: lock, Code: code, ExpireAt: now.Unix() + lifetime, Owner: owner}
 	return e.pendingResponse(now)
 }
 
 func (e *Engine) pendingResponse(now time.Time) core.Response {
 	preview := core.Entry{Domain: e.pending.Domain, Lock: e.pending.Lock.Clone()}
-	return core.Response{OK: true, Pending: true, Code: e.pending.Code, ExpiresIn: e.pending.ExpireAt - now.Unix(), Failures: e.pending.Failures, Preview: &preview, Now: now.Unix()}
+	response := core.Response{OK: true, Pending: true, Code: e.pending.Code, ExpiresIn: e.pending.ExpireAt - now.Unix(), Failures: e.pending.Failures, Preview: &preview, Now: now.Unix()}
+	for index, item := range e.pending.Targets {
+		const zero = 0
+		if index == zero {
+			response.Domains = append(response.Domains, e.pending.Domain)
+		}
+		response.Domains = append(response.Domains, item.Domain)
+	}
+	return response
 }
 
 func (e *Engine) confirm(code string, owner uint64, now time.Time) core.Response {
@@ -144,6 +156,9 @@ func (e *Engine) confirm(code string, owner uint64, now time.Time) core.Response
 		return failure(core.ErrInvalid, now)
 	}
 	candidate.Entries[pending.Entry].Lock = lock
+	if err := applyTargets(&candidate, pending.Targets, lock); err != nil {
+		return failure(err, now)
+	}
 	if err := e.commit(candidate, now); err != nil {
 		return failure(err, now)
 	}
