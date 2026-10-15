@@ -15,6 +15,12 @@ curl -fsSL https://raw.githubusercontent.com/Catherine1401/saveme/main/install.s
 saveme
 ```
 
+Windows (experimental), from an elevated PowerShell:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1))) -User <account>
+```
+
 [Install options](docs/install.md) · [Usage](docs/setup.md#use) · [Releases](https://github.com/Catherine1401/saveme/releases) · [Limits](docs/setup.md#limits)
 
 ## Features

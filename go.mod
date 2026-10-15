@@ -3,6 +3,7 @@ module saveme
 go 1.24.0
 
 require (
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/nftables v0.3.0

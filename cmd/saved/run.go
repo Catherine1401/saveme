@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,9 +12,7 @@ import (
 	"saveme/internal/config"
 	"saveme/internal/core"
 	"saveme/internal/daemon"
-	"saveme/internal/dns"
 	"saveme/internal/domain"
-	"saveme/internal/enforce"
 	"saveme/internal/store"
 )
 
@@ -25,7 +22,7 @@ func (demoEnforcer) Apply([]string) error { return nil }
 
 func runDemo(ctx context.Context, cfg config.Config) error {
 	const mode, warning = 0700, "DEMO: no DNS or network blocking; socket %s"
-	if err := os.MkdirAll(filepath.Dir(cfg.Socket), mode); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.StateDir), mode); err != nil {
 		return err
 	}
 	repo := store.New(cfg.StateDir, nil)
@@ -42,72 +39,36 @@ func runDemo(ctx context.Context, cfg config.Config) error {
 	return serveEngine(ctx, cfg, engine)
 }
 
-func runProtected(ctx context.Context, cfg config.Config) error {
-	const (
-		number1 = 1
-	)
-
-	const proxyAddress, v4, v6, mode = "127.0.0.1:5353", "127.0.0.1:53", "[::1]:53", 0700
-
-	const taskCount = 3
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	uid, gid, err := forwardIdentity(cfg)
-	if err != nil {
-		return err
-	}
-	filter := &core.Filter{}
-	enforcer := &enforce.Linux{ForwardUID: uid, Filter: filter}
-	for _, address := range cfg.DoH {
-		enforcer.DoH = append(enforcer.DoH, net.ParseIP(address))
-	}
+// Nạp state đã lưu, dựng clock theo NTP và engine production; lỗi nạp state thì gỡ chặn trước khi thoát.
+func protectedEngine(cfg config.Config, enforcer daemon.Enforcer, clear func() error) (*daemon.Engine, error) {
+	const mode = 0700
 	repo := store.New(cfg.StateDir, store.Immutable{})
 	state, err := repo.Load()
 	if err != nil {
-		cleanupErr := enforcer.Clear()
-		return errors.Join(err, cleanupErr)
+		cleanupErr := clear()
+		return nil, errors.Join(err, cleanupErr)
 	}
 	if err := os.MkdirAll(cfg.StateDir, mode); err != nil {
-		return err
+		return nil, err
 	}
 	if err := repo.Save(state); err != nil {
-		return err
+		return nil, err
 	}
 	ntp := &config.NTP{}
 	clock := core.NewClock(state.MaxSeen, time.Now, time.Now, ntp.Trusted)
 	engine, err := daemon.New(state, clock, repo, enforcer, domain.Normalizer{}, cfg.Zone)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := engine.Tick(); err != nil {
-		return err
+		return nil, err
 	}
-	resolver := &dns.Resolver{Blocker: filter, Upstreams: []string{proxyAddress}}
-	service, err := dns.Listen([]string{v4, v6}, resolver)
-	if err != nil {
-		return err
-	}
-	defer service.Close()
-	child, err := startForwarder(ctx, cfg, uid, gid)
-	if err != nil {
-		return err
-	}
-
-	results := make(chan error, taskCount)
-	go func() { results <- child.Wait() }()
-	go func() { results <- service.Run(ctx) }()
-	go func() { results <- serveEngine(ctx, cfg, engine) }()
-	first := <-results
-	cancel()
-	for range taskCount - number1 {
-		<-results
-	}
-	return first
+	return engine, nil
 }
 
 func serveEngine(ctx context.Context, cfg config.Config, engine *daemon.Engine) error {
 	const tickError = "state/enforcement sync failed: %v"
-	server := &daemon.Server{Engine: engine, UID: *cfg.AllowedUID}
+	server := newServer(engine, cfg)
 	if err := server.Listen(cfg.Socket); err != nil {
 		return err
 	}

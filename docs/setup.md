@@ -120,6 +120,23 @@ For a first walkthrough:
 
 Demo mode proves the interface flow, not network blocking.
 
+### Windows demo
+
+For a protected installation, see [Windows](install.md#windows). To try the
+interface without an installation, build with Go on Windows, then run the
+daemon and client in separate terminals as the same non-elevated account:
+
+```powershell
+go build -o bin\saved.exe .\cmd\saved
+go build -o bin\saveme.exe .\cmd\saveme
+.\bin\saved.exe -demo
+.\bin\saveme.exe -demo
+```
+
+The demo daemon listens on a named pipe, `\\.\pipe\saveme-demo-<SID>`, that
+only SYSTEM and your account can open. Its state lives under
+`%TEMP%\saveme-demo-<SID>`; stop the daemon and remove that directory to reset.
+
 ## Use
 
 The main screen lists every domain with its state: locked with the remaining

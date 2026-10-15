@@ -1,0 +1,24 @@
+name: Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+      - name: Vet and build
+        run: |
+          go vet ./...
+          go build ./cmd/saved ./cmd/saveme
+      - name: Test portable packages
+        run: go test ./internal/config ./internal/core ./internal/domain ./internal/daemon ./internal/store ./internal/dns ./internal/enforce ./internal/ui

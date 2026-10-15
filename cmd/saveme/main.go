@@ -13,14 +13,14 @@ import (
 )
 
 func main() {
-	const socketFlag, socketPath, socketHelp = "socket", "/run/saveme.sock", "Daemon socket"
+	const socketFlag, socketHelp = "socket", "Daemon socket"
 	const demoFlag, demoHelp, no, failure = "demo", "Connect to demo without network enforcement", false, 1
 	const empty = ""
 	const statusFlag, statusHelp = "status", "Print daemon status as JSON"
 	const motionFlag, motionHelp, colorFlag, colorHelp, colorEnv = "no-motion", "Disable UI animation", "no-color", "Disable UI colors", "NO_COLOR"
 	still := flag.Bool(motionFlag, no, motionHelp)
 	plain := flag.Bool(colorFlag, no, colorHelp)
-	socket := flag.String(socketFlag, socketPath, socketHelp)
+	socket := flag.String(socketFlag, config.DefaultSocket, socketHelp)
 	demo := flag.Bool(demoFlag, no, demoHelp)
 	status := flag.Bool(statusFlag, no, statusHelp)
 	flag.Parse()

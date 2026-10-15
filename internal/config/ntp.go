@@ -2,8 +2,6 @@ package config
 
 import (
 	"context"
-	"os/exec"
-	"strings"
 	"sync"
 	"time"
 )
@@ -15,7 +13,7 @@ type NTP struct {
 }
 
 func (n *NTP) Trusted() bool {
-	const interval, timeout, tool, command, property, flag, yes = 10 * time.Second, 2 * time.Second, "timedatectl", "show", "--property=NTPSynchronized", "--value", "yes"
+	const interval, timeout = 10 * time.Second, 2 * time.Second
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if !n.checked.IsZero() && time.Since(n.checked) < interval {
@@ -23,7 +21,6 @@ func (n *NTP) Trusted() bool {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, tool, command, property, flag).Output()
-	n.checked, n.trusted = time.Now(), err == nil && strings.TrimSpace(string(output)) == yes
+	n.checked, n.trusted = time.Now(), synchronized(ctx)
 	return n.trusted
 }

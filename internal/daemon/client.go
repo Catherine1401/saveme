@@ -17,8 +17,8 @@ type Client struct {
 }
 
 func Dial(path string) (*Client, error) {
-	const network, timeout = "unix", 3 * time.Second
-	conn, err := net.DialTimeout(network, path, timeout)
+	const timeout = 3 * time.Second
+	conn, err := dial(path, timeout)
 	if err != nil {
 		return nil, err
 	}

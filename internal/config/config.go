@@ -7,12 +7,12 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
 type Config struct {
 	AllowedUID  *uint32  `json:"allowed_uid"`
+	AllowedSID  string   `json:"allowed_sid,omitempty"`
 	ForwardUser string   `json:"forward_user"`
 	Zone        string   `json:"zone"`
 	Socket      string   `json:"socket"`
@@ -40,11 +40,11 @@ func Load(path string) (Config, error) {
 }
 
 func (c Config) Validate() error {
-	const empty, zero, dnsPort = "", 0, "53"
-	if c.AllowedUID == nil || *c.AllowedUID == zero || c.ForwardUser == empty {
+	const zero, dnsPort = 0, "53"
+	if !c.validIdentity() {
 		return os.ErrInvalid
 	}
-	if !filepath.IsAbs(c.Socket) || !filepath.IsAbs(c.StateDir) {
+	if !validSocket(c.Socket) || !filepath.IsAbs(c.StateDir) {
 		return os.ErrInvalid
 	}
 	if _, err := time.LoadLocation(c.Zone); err != nil {
@@ -66,11 +66,4 @@ func (c Config) Validate() error {
 		}
 	}
 	return nil
-}
-
-func Demo() Config {
-	const prefix, socket, state, zone = "saveme-demo-", "saveme.sock", "state", "UTC"
-	uid := uint32(os.Getuid())
-	dir := filepath.Join(os.TempDir(), prefix+strconv.Itoa(int(uid)))
-	return Config{AllowedUID: &uid, Socket: filepath.Join(dir, socket), StateDir: filepath.Join(dir, state), Zone: zone}
 }

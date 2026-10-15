@@ -23,7 +23,7 @@ jobs:
         run: |
           make test check
           bash -n install.sh deploy/install.sh deploy/update.sh deploy/check.sh scripts/release.sh scripts/install_test.sh
-      - name: Build Linux bundles
+      - name: Build Linux and Windows bundles
         run: bash scripts/release.sh "$GITHUB_REF_NAME"
       - name: Check installer bootstrap
         run: bash scripts/install_test.sh "dist/$GITHUB_REF_NAME"
@@ -35,4 +35,6 @@ jobs:
           gh release create "$version" --verify-tag --generate-notes \
             "dist/$version/saveme_${version#v}_linux_amd64.tar.gz" \
             "dist/$version/saveme_${version#v}_linux_arm64.tar.gz" \
+            "dist/$version/saveme_${version#v}_windows_amd64.zip" \
+            "dist/$version/saveme_${version#v}_windows_arm64.zip" \
             "dist/$version/checksums.txt"

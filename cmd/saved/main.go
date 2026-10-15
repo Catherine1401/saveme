@@ -23,20 +23,26 @@ type options struct {
 }
 
 func main() {
-	const configFlag, configPath, configHelp = "config", "/etc/saveme/config.json", "Daemon configuration file"
+	const configFlag, configHelp = "config", "Daemon configuration file"
 	const demoFlag, demoHelp, forwardFlag, forwardHelp = "demo", "Run demo without network enforcement", "forwarder", "Run the DNS forwarder"
 	const upstreamFlag, defaultUpstreams, upstreamHelp = "upstreams", "1.1.1.1:53,8.8.8.8:53", "Comma-separated resolver IP:53 addresses"
 	const no = false
 	const checkConfigFlag, checkConfigHelp = "check-config", "Validate configuration without starting the daemon"
 	const checkUpdateFlag, checkUpdateHelp = "check-update", "Validate configuration and require stored state without a lock"
 	var opts options
-	flag.StringVar(&opts.config, configFlag, configPath, configHelp)
+	flag.StringVar(&opts.config, configFlag, config.DefaultConfig, configHelp)
 	flag.BoolVar(&opts.demo, demoFlag, no, demoHelp)
 	flag.BoolVar(&opts.forwarder, forwardFlag, no, forwardHelp)
 	flag.StringVar(&opts.upstreams, upstreamFlag, defaultUpstreams, upstreamHelp)
 	flag.BoolVar(&opts.checkConfig, checkConfigFlag, no, checkConfigHelp)
 	flag.BoolVar(&opts.checkUpdate, checkUpdateFlag, no, checkUpdateHelp)
 	flag.Parse()
+	if handled, err := runService(opts); handled || err != nil {
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	if err := run(ctx, opts); err != nil {
@@ -45,9 +51,9 @@ func main() {
 }
 
 func run(ctx context.Context, opts options) error {
-	const separator, address, root = ",", "127.0.0.1:5353", 0
+	const separator, address = ",", "127.0.0.1:5353"
 	if opts.forwarder {
-		if os.Geteuid() == root {
+		if privileged() {
 			return os.ErrPermission
 		}
 		resolver := &dns.Resolver{Upstreams: strings.Split(opts.upstreams, separator)}
@@ -59,12 +65,12 @@ func run(ctx context.Context, opts options) error {
 		return service.Run(ctx)
 	}
 	if opts.demo {
-		if os.Geteuid() == root {
+		if privileged() {
 			return os.ErrPermission
 		}
 		return runDemo(ctx, config.Demo())
 	}
-	if os.Geteuid() != root {
+	if !privileged() {
 		return os.ErrPermission
 	}
 	cfg, err := config.Load(opts.config)

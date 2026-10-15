@@ -16,7 +16,8 @@ If none exists yet, use [the source build](#build-from-source).
 
 Bundles are built for `amd64` (`x86_64`) and `arm64` (`aarch64`). ARM64 is
 cross-compiled; runtime verification is tracked separately from a successful
-build. macOS, Windows and systems without systemd are not supported.
+build. Windows uses separate bundles; see [Windows](#windows). macOS and Linux
+systems without systemd are not supported.
 
 Run the installer as the ordinary account that will manage locks:
 
@@ -128,6 +129,52 @@ saveme
 Run `make test check` before deploying local changes. Source installation uses
 the same service checks and conflict refusal as binary installation. To update
 from a built checkout, run `sudo bash deploy/update.sh "$USER"`.
+
+## Windows
+
+Windows support is experimental and has not been verified on a real Windows
+installation yet. Requirements: Windows 10/11 or Server with PowerShell 5.1,
+an Administrator account to install, an ordinary account to manage locks, the
+Windows Time service synchronized with a network source, and free
+`127.0.0.1:53` and `[::1]:53`.
+
+From an elevated PowerShell, the bootstrap script downloads the bundle for
+your architecture, verifies it against `checksums.txt` and runs its installer.
+Add `-Version vX.Y.Z` to pin a release, `-Update` to update, or
+`-Version vX.Y.Z -Archive FILE -Checksums FILE` for an offline bundle:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1))) -User <account>
+```
+
+To install manually instead, download `saveme_<version>_windows_<arch>.zip`
+and `checksums.txt` from the release, verify the hash, extract the archive,
+then run from an elevated PowerShell in the extracted directory:
+
+```powershell
+Get-FileHash .\saveme_<version>_windows_amd64.zip -Algorithm SHA256
+powershell -ExecutionPolicy Bypass -File .\deploy\windows\install.ps1 -User <account>
+```
+
+The installer copies binaries to `%ProgramFiles%\saveme`, writes
+`C:\ProgramData\saveme\config.json` with the account's SID, limits that
+directory to SYSTEM, Administrators and read access for the account, registers
+the automatic `saved` service and disables DNS-over-HTTPS in Chrome, Edge,
+Chromium and Firefox through registry policies. It refuses an existing
+installation. Run `"%ProgramFiles%\saveme\saveme.exe"` as the selected account.
+
+To update, extract the new bundle and run `deploy\windows\update.ps1` from an
+elevated PowerShell. Like Linux, it refuses while any domain has a stored lock
+and restores the previous binaries and state if the new service does not start.
+Service logs are written to `C:\ProgramData\saveme\saved.log`.
+
+While a domain is locked, the service adds a Name Resolution Policy Table rule
+sending all DNS queries to its local resolver and Windows Firewall rules in
+the `saveme` group that block outbound DNS except to the configured upstreams,
+DNS-over-TLS on port 853 and the configured DoH addresses on port 443. Windows
+Firewall cannot exempt only the service from a block rule, so an application
+that queries the configured upstream resolvers directly on port 53 can bypass
+the lock. An Administrator can remove the rules or stop the service.
 
 ## Troubleshooting
 
