@@ -123,8 +123,10 @@ Demo mode proves the interface flow, not network blocking.
 The README demo is recorded with [VHS](https://github.com/charmbracelet/vhs):
 run `make build && vhs docs/assets/demo.tape` with `vhs`, `ttyd` and ffmpeg on
 the `PATH`. The tape starts the demo daemon with `SAVEME_DEMO_CODE=K7MQ`, which
-makes every confirmation code `K7MQ` so the recording can type it. Only
-`saved -demo` reads this variable; the protected service ignores it.
+makes every confirmation code `K7MQ` so the recording can type it, and runs
+`saveme -demo` with `SAVEME_DEMO_KEYS=1`, which shows each pressed key and its
+meaning in the bottom-right corner. Only demo mode reads these variables; the
+protected service and a normal `saveme` ignore them.
 
 ### Windows demo
 
