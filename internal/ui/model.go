@@ -56,6 +56,9 @@ type Model struct {
 	lastChar       time.Time
 	charGeneration uint64
 	marked         []string
+	keycast        bool
+	castLabel      string
+	castAt         time.Time
 	settings       Settings
 	saveSettings   func(Settings) error
 	picking        int
@@ -126,7 +129,7 @@ func (m Model) Update(message Msg) (Model, Cmd) {
 			m.appearance.flash = pulse
 		}
 	case KeyMsg:
-		return m.key(value)
+		return m.recordKey(value, time.Now()).key(value)
 	}
 	return m, nil
 }

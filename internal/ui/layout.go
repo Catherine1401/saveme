@@ -94,7 +94,7 @@ func (m Model) compose(body string) string {
 		content = lipgloss.PlaceHorizontal(m.contentWidth(), lipgloss.Center, m.box(strings.Split(strings.TrimRight(content, newline), newline)))
 		content = strings.TrimRight(content, newline) + newline
 	}
-	head, notes, foot := m.statusLine(), m.messages(), strings.TrimRight(m.decorate(strings.TrimRight(footer, newline)), newline)
+	head, notes, foot := m.statusLine(), m.messages()+m.keycastLine(), strings.TrimRight(m.decorate(strings.TrimRight(footer, newline)), newline)
 	page := head + content
 	if m.appearance.height > zero {
 		lines := func(text string) int { return strings.Count(text, newline) }

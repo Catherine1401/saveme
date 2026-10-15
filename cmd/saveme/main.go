@@ -18,6 +18,7 @@ func main() {
 	const empty = ""
 	const statusFlag, statusHelp = "status", "Print daemon status as JSON"
 	const motionFlag, motionHelp, colorFlag, colorHelp, colorEnv = "no-motion", "Disable UI animation", "no-color", "Disable UI colors", "NO_COLOR"
+	const keysEnv = "SAVEME_DEMO_KEYS"
 	const themeFlag, themeHelp, clockFlag, clockHelp, effectFlag, effectHelp = "theme", "Color theme for this session; press s in the UI to save one", "clock", "Countdown clock style for this session", "clock-effects", "Comma-separated countdown clock effects for this session, or none"
 	still := flag.Bool(motionFlag, no, motionHelp)
 	plain := flag.Bool(colorFlag, no, colorHelp)
@@ -49,7 +50,7 @@ func main() {
 		}
 		return
 	}
-	program := tea.NewProgram(terminal{model: ui.New(client, domain.Normalizer{}).Appearance(*plain || os.Getenv(colorEnv) != empty, *still).Configure(settings, saveSettings)}, tea.WithAltScreen())
+	program := tea.NewProgram(terminal{model: ui.New(client, domain.Normalizer{}).Appearance(*plain || os.Getenv(colorEnv) != empty, *still).Configure(settings, saveSettings).Keycast(*demo && os.Getenv(keysEnv) != empty)}, tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(failure)
