@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">saveme</title>
+  <desc id="desc">A violet padlock inside a countdown ring on a dark rounded square.</desc>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#313244"/>
+      <stop offset="1" stop-color="#1e1e2e"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cba6f7"/>
+      <stop offset="1" stop-color="#b4befe"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#tile)" stroke="#45475a" stroke-width="2"/>
+  <circle cx="128" cy="128" r="84" fill="none" stroke="#45475a" stroke-width="12"/>
+  <path d="M128 44a84 84 0 1 1 -84 84" fill="none" stroke="url(#ink)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M104 118v-14a24 24 0 0 1 48 0v14" fill="none" stroke="url(#ink)" stroke-width="12" stroke-linecap="round"/>
+  <rect x="88" y="116" width="80" height="62" rx="14" fill="url(#ink)"/>
+  <circle cx="128" cy="141" r="8" fill="#1e1e2e"/>
+  <rect x="124" y="144" width="8" height="18" rx="4" fill="#1e1e2e"/>
+</svg>

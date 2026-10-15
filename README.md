@@ -1,9 +1,11 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" width="360" alt="saveme" />
+  <img src="docs/assets/logo.svg" width="128" alt="saveme logo" />
 </p>
 
+<h1 align="center">saveme</h1>
+
 <p align="center">
-  Block distracting sites from your terminal — per domain, on a schedule or a timer.
+  <em>Block distracting sites from your terminal — per domain, on a schedule or a timer.</em>
 </p>
 
 <p align="center">
