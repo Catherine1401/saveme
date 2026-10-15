@@ -8,11 +8,12 @@ fail() {
 }
 
 help() {
-  local readonly text='Usage: bash install.sh [--user ACCOUNT] [--version vX.Y.Z] [--update]
+  local readonly text='Usage: bash install.sh [--user ACCOUNT] [--version vX.Y.Z] [--update | --uninstall]
        bash install.sh --version vX.Y.Z --archive FILE --checksums FILE
 
 Downloads a verified Linux binary bundle. Run as an ordinary user; sudo is
-used only for deployment. --update keeps configuration, state and policies.
+used only for deployment. --update keeps configuration, state and policies;
+--uninstall removes saveme. Both require no stored lock or daily schedule.
 Updates require no stored lock or daily schedule. Offline bundles require
 both --archive and --checksums. No shell profile is modified.'
   local readonly format='%s\n'
@@ -59,7 +60,7 @@ verify() {
 
 extract() {
   local readonly archive="$1" destination="$2"
-  local readonly members=(bin/saveme bin/saved deploy/install.sh deploy/update.sh
+  local readonly members=(bin/saveme bin/saved deploy/install.sh deploy/update.sh deploy/uninstall.sh
     deploy/check.sh deploy/config.json deploy/saved.service deploy/chrome.json
     deploy/firefox.json LICENSE VERSION)
   mkdir -p "$destination"
@@ -74,7 +75,7 @@ extract() {
 main() (
   local readonly base=https://github.com/Catherine1401/saveme/releases
   local readonly empty='' zero=0 one=1 two=2 tag_pattern='^v?[0-9]+\.[0-9]+\.[0-9]+$'
-  local readonly checksum_name=checksums.txt install_name=install.sh update_name=update.sh
+  local readonly checksum_name=checksums.txt install_name=install.sh update_name=update.sh uninstall_name=uninstall.sh
   local readonly temporary_pattern=saveme-install.XXXXXXXX payload_name=payload
   local readonly cleanup='rm -rf -- "$workspace"' format='%s\n'
   local readonly root_message='Run this script as an ordinary user, without sudo.'
@@ -88,6 +89,7 @@ main() (
     case "$1" in
       --help|-h) help; return ;;
       --update) update="$one"; shift ;;
+      --uninstall) update="$two"; shift ;;
       --user|--version|--archive|--checksums)
         [[ "$#" -ge "$two" && -n "$2" ]] || fail "Missing value for $1"
         case "$1" in
@@ -131,7 +133,8 @@ main() (
   extract "$workspace/$asset" "$package"
   [[ "$(cat "$package/VERSION")" == "$version" ]] || fail "$version_message"
   local action="$install_name"
-  [[ "$update" -eq "$zero" ]] || action="$update_name"
+  [[ "$update" -ne "$one" ]] || action="$update_name"
+  [[ "$update" -ne "$two" ]] || action="$uninstall_name"
   sudo bash "$package/deploy/$action" "$owner"
 )
 

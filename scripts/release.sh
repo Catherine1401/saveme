@@ -21,7 +21,7 @@ package() (
       (cd "$root" && CGO_ENABLED="$disabled" GOOS="$linux" GOARCH="$arch" \
         go build -mod=readonly -trimpath -ldflags='-s -w' -o "$bundle/bin/$command" "./cmd/$command")
     done
-    cp -- "$root/deploy/"{install.sh,update.sh,check.sh,config.json,saved.service,chrome.json,firefox.json} "$bundle/deploy/"
+    cp -- "$root/deploy/"{install.sh,update.sh,uninstall.sh,check.sh,config.json,saved.service,chrome.json,firefox.json} "$bundle/deploy/"
     cp -- "$root/LICENSE" "$bundle/LICENSE"
     printf "$format" "$version" > "$bundle/VERSION"
     tar -czf "$root/$directory/saveme_${version#v}_${linux}_$arch.tar.gz" -C "$bundle" bin deploy LICENSE VERSION
@@ -33,7 +33,7 @@ package() (
       (cd "$root" && CGO_ENABLED="$disabled" GOOS="$windows" GOARCH="$arch" \
         go build -mod=readonly -trimpath -ldflags='-s -w' -o "$bundle/bin/$command.exe" "./cmd/$command")
     done
-    cp -- "$root/deploy/$windows/"{install.ps1,update.ps1,common.ps1,config.json} "$bundle/deploy/$windows/"
+    cp -- "$root/deploy/$windows/"{install.ps1,update.ps1,uninstall.ps1,common.ps1,config.json} "$bundle/deploy/$windows/"
     cp -- "$root/LICENSE" "$bundle/LICENSE"
     printf "$format" "$version" > "$bundle/VERSION"
     (cd "$bundle" && zip -qr "$root/$directory/saveme_${version#v}_${windows}_$arch.zip" bin deploy LICENSE VERSION)

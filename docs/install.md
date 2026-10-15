@@ -178,6 +178,34 @@ Firewall cannot exempt only the service from a block rule, so an application
 that queries the configured upstream resolvers directly on port 53 can bypass
 the lock. An Administrator can remove the rules or stop the service.
 
+## Uninstall
+
+Removal is refused while any domain has a stored lock or daily schedule, the
+same rule as updates. Wait for timed locks to expire and delete daily schedules
+first.
+
+Linux, as your ordinary account:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Catherine1401/saveme/main/install.sh | bash -s -- --uninstall
+```
+
+This runs `deploy/uninstall.sh` from a verified bundle. It stops and disables
+`saved.service`, removes the binaries, configuration, state, service unit and
+drop-ins, the Chrome, Chromium and Firefox policies and the `saveme-dns`
+account. From an extracted bundle you can run `sudo bash deploy/uninstall.sh`.
+
+Windows, from a normal PowerShell:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1))) -Uninstall
+```
+
+This runs `deploy\windows\uninstall.ps1`, which removes the `saved` service,
+the `saveme` firewall rules and name resolution policy, the browser
+DNS-over-HTTPS policies, `%ProgramFiles%\saveme` and `C:\ProgramData\saveme`.
+Your settings in `saveme/preferences.json` are kept.
+
 ## Troubleshooting
 
 Read `journalctl -u saved.service --no-pager -n 50` if the service fails.

@@ -3,6 +3,7 @@ param(
     [string]$User = '',
     [string]$Version = '',
     [switch]$Update,
+    [switch]$Uninstall,
     [string]$Archive = '',
     [string]$Checksums = '',
     [switch]$Help,
@@ -13,16 +14,17 @@ $Base = 'https://github.com/Catherine1401/saveme/releases'
 $ScriptUrl = 'https://raw.githubusercontent.com/Catherine1401/saveme/main/install.ps1'
 $TagPattern = '^v?[0-9]+\.[0-9]+\.[0-9]+$'
 $ChecksumName = 'checksums.txt'
-$Members = @('bin\saveme.exe', 'bin\saved.exe', 'deploy\windows\install.ps1', 'deploy\windows\update.ps1',
+$Members = @('bin\saveme.exe', 'bin\saved.exe', 'deploy\windows\install.ps1', 'deploy\windows\update.ps1', 'deploy\windows\uninstall.ps1',
     'deploy\windows\common.ps1', 'deploy\windows\config.json', 'LICENSE', 'VERSION')
 $Usage = @'
-Usage: install.ps1 [-User ACCOUNT] [-Version vX.Y.Z] [-Update]
+Usage: install.ps1 [-User ACCOUNT] [-Version vX.Y.Z] [-Update | -Uninstall]
        install.ps1 -Version vX.Y.Z -Archive FILE -Checksums FILE
 
 Downloads a verified Windows bundle and runs its installer. Run from a normal
 PowerShell; it asks for administrator rights through UAC. -User selects the
 ordinary account that manages locks and defaults to the current account. -Update keeps
-configuration, state and policies and requires no stored lock. Offline bundles
+configuration, state and policies; -Uninstall removes saveme. Both require no
+stored lock. Offline bundles
 require -Archive, -Checksums and -Version.
 '@
 
@@ -75,6 +77,7 @@ function Invoke-Elevated([string]$Account) {
     $call = "-User $(& $quoted $Account) -Elevated"
     if ($Version) { $call += " -Version $(& $quoted $Version)" }
     if ($Update) { $call += ' -Update' }
+    if ($Uninstall) { $call += ' -Uninstall' }
     if ($Archive) { $call += " -Archive $(& $quoted (Resolve-Path $Archive).Path) -Checksums $(& $quoted (Resolve-Path $Checksums).Path)" }
     $source = "[scriptblock]::Create((Invoke-RestMethod -UseBasicParsing $(& $quoted $ScriptUrl)))"
     if ($PSCommandPath) { $source = "[scriptblock]::Create((Get-Content -Raw $(& $quoted $PSCommandPath)))" }
@@ -132,8 +135,8 @@ try {
     if (-not (Test-Path $shell)) { $shell = Join-Path $PSHOME 'pwsh.exe' }
     $installer = Join-Path $package 'deploy\windows\install.ps1'
     $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installer, '-User', $User)
-    if ($Update) {
-        $installer = Join-Path $package 'deploy\windows\update.ps1'
+    if ($Update -or $Uninstall) {
+        $installer = Join-Path $package $(if ($Uninstall) { 'deploy\windows\uninstall.ps1' } else { 'deploy\windows\update.ps1' })
         $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installer)
     }
     & $shell @arguments
