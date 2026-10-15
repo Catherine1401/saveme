@@ -7,6 +7,7 @@ build:
 
 test:
 	go test -race ./...
+	bash scripts/check_test.sh
 
 check:
 	go vet ./...

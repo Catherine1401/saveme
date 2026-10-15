@@ -6,7 +6,7 @@ ready() {
   for ((attempt=zero; attempt<attempts; attempt++)); do
     if systemctl is-active --quiet "$service" && runuser -u "$owner" -- "$client" -status >/dev/null; then
       sleep "$pause"
-      systemctl is-active --quiet "$service" && runuser -u "$owner" -- "$client" -status >/dev/null && return
+      systemctl is-active --quiet "$service" && runuser -u "$owner" -- "$client" -status >/dev/null && return "$zero"
     fi
     sleep "$pause"
   done
