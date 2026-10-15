@@ -35,10 +35,11 @@ func runService(opts options) (bool, error) {
 // Nhận lệnh dừng từ SCM và chờ daemon thoát.
 func (s service) Execute(_ []string, requests <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
 	const accepted, failure, success = svc.AcceptStop | svc.AcceptShutdown, 1, 0
+	const buffer = 1
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	status <- svc.Status{State: svc.StartPending}
-	finished := make(chan error, 1)
+	finished := make(chan error, buffer)
 	go func() { finished <- run(ctx, s.opts) }()
 	status <- svc.Status{State: svc.Running, Accepts: accepted}
 	for {

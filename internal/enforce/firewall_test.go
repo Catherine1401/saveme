@@ -16,15 +16,15 @@ type fakeShell struct {
 }
 
 func (s *fakeShell) run(script string) (string, error) {
-	const failure = "powershell failed"
+	const failure, probe, empty = "powershell failed", "Write-Output", ""
 	s.scripts = append(s.scripts, script)
 	if s.fail {
-		return "", errors.New(failure)
+		return empty, errors.New(failure)
 	}
-	if strings.Contains(script, "Write-Output") {
+	if strings.Contains(script, probe) {
 		return s.check, nil
 	}
-	return "", nil
+	return empty, nil
 }
 
 func newFirewall(shell *fakeShell) *Firewall {
@@ -34,40 +34,42 @@ func newFirewall(shell *fakeShell) *Firewall {
 
 func TestFirewallAppliesClearsAndSkipsRepeats(t *testing.T) {
 	const domain, create, remove, nrpt = "example.com", "New-NetFirewallRule", "Remove-NetFirewallRule", "Add-DnsClientNrptRule"
-	shell := &fakeShell{check: "6 1"}
+	const healthy, upstream, rules, first, second, third, one, two = "6 1", "'1.1.1.1'", 6, 0, 1, 2, 1, 2
+	shell := &fakeShell{check: healthy}
 	firewall := newFirewall(shell)
-	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != 1 || !strings.Contains(shell.scripts[0], remove) {
+	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != one || !strings.Contains(shell.scripts[first], remove) {
 		t.Fatal(err, shell.scripts)
 	}
-	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != 1 {
+	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != one {
 		t.Fatal(err, shell.scripts)
 	}
-	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != 2 {
+	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != two {
 		t.Fatal(err, shell.scripts)
 	}
-	script := shell.scripts[1]
-	if strings.Count(script, create) != 6 || !strings.Contains(script, nrpt) || strings.Contains(script, "'1.1.1.1'") || !firewall.Filter.Blocked(domain) {
+	script := shell.scripts[second]
+	if strings.Count(script, create) != rules || !strings.Contains(script, nrpt) || strings.Contains(script, upstream) || !firewall.Filter.Blocked(domain) {
 		t.Fatal(script)
 	}
-	if err := firewall.Clear(); err != nil || firewall.active || !strings.Contains(shell.scripts[2], remove) {
+	if err := firewall.Clear(); err != nil || firewall.active || !strings.Contains(shell.scripts[third], remove) {
 		t.Fatal(err, shell.scripts)
 	}
 }
 
 func TestFirewallRepairsMissingRules(t *testing.T) {
 	const domain, create = "example.com", "New-NetFirewallRule"
-	shell := &fakeShell{check: "5 1"}
+	const missing, healthy, third, three, four = "5 1", "6 1", 2, 3, 4
+	shell := &fakeShell{check: missing}
 	firewall := newFirewall(shell)
 	if err := firewall.Apply([]string{domain}); err != nil {
 		t.Fatal(err)
 	}
 	firewall.checked = firewall.checked.Add(-firewallRecheck())
-	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != 3 || !strings.Contains(shell.scripts[2], create) {
+	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != three || !strings.Contains(shell.scripts[third], create) {
 		t.Fatal(err, shell.scripts)
 	}
-	shell.check = "6 1"
+	shell.check = healthy
 	firewall.checked = firewall.checked.Add(-firewallRecheck())
-	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != 4 {
+	if err := firewall.Apply([]string{domain}); err != nil || len(shell.scripts) != four {
 		t.Fatal(err, shell.scripts)
 	}
 }
