@@ -35,6 +35,10 @@ func runDemo(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
+	const codeVariable, invalidCode, unset = "SAVEME_DEMO_CODE", "DEMO: ignoring %s; use 4 confirmation-code characters", ""
+	if code := os.Getenv(codeVariable); code != unset && !engine.UseFixedCode(code) {
+		log.Printf(invalidCode, codeVariable)
+	}
 	log.Printf(warning, cfg.Socket)
 	return serveEngine(ctx, cfg, engine)
 }

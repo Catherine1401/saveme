@@ -98,7 +98,7 @@ func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Res
 	if e.pending != nil {
 		previous = e.pending.Code
 	}
-	code, err := replacementCode(previous)
+	code, err := e.nextCode(previous)
 	if err != nil {
 		return failure(err, now)
 	}
@@ -134,7 +134,7 @@ func (e *Engine) confirm(code string, owner uint64, now time.Time) core.Response
 			e.pending = nil
 			return failure(core.ErrBadCode, now)
 		}
-		next, err := replacementCode(e.pending.Code)
+		next, err := e.nextCode(e.pending.Code)
 		if err != nil {
 			e.pending = nil
 			return failure(err, now)

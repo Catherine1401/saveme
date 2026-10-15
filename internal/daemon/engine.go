@@ -36,6 +36,7 @@ type Engine struct {
 	lastSaved    int64
 	health       error
 	storageFault bool
+	fixedCode    string
 }
 
 func New(state core.State, clock core.Clock, repo Repository, enforcer Enforcer, normalizer Normalizer, zone string) (*Engine, error) {
