@@ -10,6 +10,7 @@ import (
 func TestShortDurationsConfirmPersistAndExpire(t *testing.T) {
 	const owner, one, two, four, six = 1, "1h", "2h", "4h", "6h"
 	const twoHours, fourHours, sixHours, zero, lastSecond = 2, 4, 6, 0, time.Second
+	const target = zero
 	cases := []struct {
 		value string
 		span  time.Duration
@@ -17,13 +18,13 @@ func TestShortDurationsConfirmPersistAndExpire(t *testing.T) {
 	for _, scenario := range cases {
 		t.Run(scenario.value, func(t *testing.T) {
 			f := newFixture(t)
-			pending := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: scenario.value}, owner)
+			pending := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: scenario.value}, owner)
 			if !pending.Pending {
 				t.Fatal(pending)
 			}
 			confirmed := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: pending.Code}, owner)
 			end := f.clock.now.Add(scenario.span)
-			if !confirmed.OK || !confirmed.Active || confirmed.EndAt != end.Unix() || f.repo.state.Lock.EndAt != end.Unix() {
+			if !confirmed.OK || !confirmed.Active || confirmed.Entries[target].EndAt != end.Unix() || f.repo.state.Entries[target].Lock.EndAt != end.Unix() {
 				t.Fatal(confirmed, f.repo.state)
 			}
 			f.clock.now = end.Add(-lastSecond)
@@ -31,10 +32,10 @@ func TestShortDurationsConfirmPersistAndExpire(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.clock.now = end
-			if err := f.engine.Tick(); err != nil || f.enforcer.active || f.repo.state.Lock != nil {
+			if err := f.engine.Tick(); err != nil || f.enforcer.active || f.repo.state.Entries[target].Lock != nil {
 				t.Fatal(err, f.repo.state)
 			}
-			if response := f.engine.Handle(core.Request{Cmd: core.Status}, owner); !response.OK || response.Active || response.EndAt != zero {
+			if response := f.engine.Handle(core.Request{Cmd: core.Status}, owner); !response.OK || response.Active || response.Entries[target].EndAt != zero {
 				t.Fatal(response)
 			}
 		})

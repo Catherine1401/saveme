@@ -63,38 +63,43 @@ func (l *Lock) Transition(now time.Time) int64 {
 }
 
 func (s State) Validate() error {
-	const version, zero, minimumDomains, maxRangeSeconds = 1, 0, 1, 30 * 24 * 60 * 60
-	if s.Version != version || s.MaxSeen < zero {
+	const zero = 0
+	if s.Version != StateVersion || s.MaxSeen < zero {
 		return ErrInvalid
 	}
-	for index, domain := range s.Domains {
-		if ValidateDomain(domain) != nil {
+	for index, entry := range s.Entries {
+		if ValidateDomain(entry.Domain) != nil {
 			return ErrInvalid
 		}
-		for _, previous := range s.Domains[:index] {
-			if previous == domain {
+		for _, previous := range s.Entries[:index] {
+			if previous.Domain == entry.Domain {
 				return ErrInvalid
 			}
 		}
+		if entry.Lock == nil {
+			continue
+		}
+		if err := entry.Lock.Validate(); err != nil {
+			return err
+		}
 	}
-	if s.Lock == nil {
-		return nil
-	}
-	if len(s.Domains) < minimumDomains {
+	return nil
+}
+
+func (l *Lock) Validate() error {
+	const zero, maxRangeSeconds = 0, 30 * 24 * 60 * 60
+	if _, err := time.LoadLocation(l.Zone); err != nil {
 		return ErrInvalid
 	}
-	if _, err := time.LoadLocation(s.Lock.Zone); err != nil {
-		return ErrInvalid
-	}
-	switch s.Lock.Kind {
+	switch l.Kind {
 	case Daily:
-		if len(s.Lock.Windows) == zero || s.Lock.StartAt != zero || s.Lock.EndAt != zero {
+		if len(l.Windows) == zero || l.StartAt != zero || l.EndAt != zero {
 			return ErrInvalid
 		}
-		return ValidateWindows(s.Lock.Windows)
+		return ValidateWindows(l.Windows)
 	case Range:
-		span := s.Lock.EndAt - s.Lock.StartAt
-		if s.Lock.StartAt < zero || span <= zero || span > maxRangeSeconds || len(s.Lock.Windows) != zero {
+		span := l.EndAt - l.StartAt
+		if l.StartAt < zero || span <= zero || span > maxRangeSeconds || len(l.Windows) != zero {
 			return ErrInvalid
 		}
 		return nil

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -13,13 +14,13 @@ import (
 func TestAnimationDoesNotCallDaemonOrChangeCountdown(t *testing.T) {
 	const now, end, frames, empty = 1000, 1060, 12, ""
 	model := readyModel()
-	model.status = core.Response{OK: true, Active: true, Now: now, EndAt: end}
+	model.screen, model.status = domainLocked, core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: end}}}
 	before := model.status
 	client := model.client.(*recordingClient)
 	for range frames {
 		var action Cmd
 		model, action = model.Update(animationFrame(time.Now()))
-		if action == nil || model.status != before || client.last.Cmd != core.Command(empty) {
+		if action == nil || !reflect.DeepEqual(model.status, before) || client.last.Cmd != core.Command(empty) {
 			t.Fatal(model.status, client.last)
 		}
 	}
@@ -28,13 +29,14 @@ func TestAnimationDoesNotCallDaemonOrChangeCountdown(t *testing.T) {
 func TestRepeatedLockedStatusDoesNotClearScreen(t *testing.T) {
 	const now, end = 1000, 1060
 	model := readyModel()
-	response := core.Response{OK: true, Active: true, Now: now, EndAt: end}
+	model.screen = domainMenu
+	response := core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: end}}}
 	model, action := model.Update(reply{request: core.Request{Cmd: core.Status}, response: response})
 	if action == nil {
 		t.Fatal(response)
 	}
 	model, action = model.Update(reply{request: core.Request{Cmd: core.Status}, response: response})
-	if action != nil || !model.status.Active || model.status.State != nil {
+	if action != nil || model.screen != domainLocked {
 		t.Fatal(model.status)
 	}
 }

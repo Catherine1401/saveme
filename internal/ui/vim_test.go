@@ -9,6 +9,7 @@ import (
 func TestVimListNavigationEnabledByDefault(t *testing.T) {
 	const down, up, first, last, top, second, bottom = "j", "k", "g", "G", 0, 1, 2
 	model := readyModel()
+	model.status.Entries = []core.EntryStatus{{Domain: "a.com"}, {Domain: "b.com"}, {Domain: "c.com"}}
 	model, _ = model.Update(runeKey(down))
 	if model.selected != second {
 		t.Fatal(model.selected)
@@ -64,18 +65,19 @@ func TestVimTimeFieldsAndTextInput(t *testing.T) {
 func TestVimDisabledEmptyAndLockedGuards(t *testing.T) {
 	const down, enter, last, selected, empty = "j", "enter", "G", 1, ""
 	model := readyModel()
-	model.status.State.Lock = &core.Lock{Kind: core.Daily}
+	model.screen = domainMenu
+	model.status.Entries[0].Kind = core.Daily
 	model, _ = model.Update(runeKey(down))
 	model, action := model.Update(control(enter))
-	if action != nil || model.screen != mainScreen || model.error == empty || model.selected != selected {
+	if action != nil || model.screen != domainMenu || model.error == empty || model.selected != selected {
 		t.Fatal(model, action)
 	}
-	model.screen, model.status.State.Domains = domainList, nil
+	model.screen, model.status.Entries = mainScreen, nil
 	model, action = model.Update(runeKey(last))
 	if action != nil || model.selected != 0 {
 		t.Fatal(model.selected)
 	}
-	model.status.Active = true
+	model.screen = domainLocked
 	before := model.selected
 	model, action = model.Update(runeKey(down))
 	if action != nil || model.selected != before {
@@ -84,10 +86,14 @@ func TestVimDisabledEmptyAndLockedGuards(t *testing.T) {
 }
 
 func TestVimHorizontalNavigationOpensAndReturns(t *testing.T) {
-	const left, right, next, domain = "h", "l", "j", "example.com"
+	const left, right, next, edit, domain = "h", "l", "j", "e", "example.com"
 	model := readyModel()
 	model, _ = model.Update(runeKey(left))
 	if model.screen != mainScreen {
+		t.Fatal(model.screen)
+	}
+	model, _ = model.Update(runeKey(right))
+	if model.screen != domainMenu {
 		t.Fatal(model.screen)
 	}
 	model, _ = model.Update(runeKey(next))
@@ -96,11 +102,11 @@ func TestVimHorizontalNavigationOpensAndReturns(t *testing.T) {
 		t.Fatal(model.screen)
 	}
 	model, _ = model.Update(runeKey(left))
+	model, _ = model.Update(runeKey(left))
 	if model.screen != mainScreen {
 		t.Fatal(model.screen)
 	}
-	model.screen = domainList
-	model, _ = model.Update(runeKey(right))
+	model, _ = model.Update(runeKey(edit))
 	if model.screen != domainEdit || model.domainText != domain {
 		t.Fatal(model.screen, model.domainText)
 	}

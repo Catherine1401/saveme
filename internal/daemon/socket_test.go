@@ -12,6 +12,7 @@ import (
 
 func TestProtocolOverPipe(t *testing.T) {
 	const owner, duration = 1, "12h"
+	const target = 0
 	f := newFixture(t)
 	server, client := net.Pipe()
 	defer client.Close()
@@ -20,7 +21,7 @@ func TestProtocolOverPipe(t *testing.T) {
 	s := Server{Engine: f.engine}
 	go s.serveConn(ctx, server, owner)
 	encoder, decoder := json.NewEncoder(client), json.NewDecoder(client)
-	if err := encoder.Encode(core.Request{Cmd: core.CreateRange, Duration: duration}); err != nil {
+	if err := encoder.Encode(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}); err != nil {
 		t.Fatal(err)
 	}
 	var pending core.Response
@@ -31,7 +32,7 @@ func TestProtocolOverPipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	var active core.Response
-	if err := decoder.Decode(&active); err != nil || !active.Active || active.State != nil {
+	if err := decoder.Decode(&active); err != nil || !active.Active || active.Entries[target].Windows != nil {
 		t.Fatal(active, err)
 	}
 }

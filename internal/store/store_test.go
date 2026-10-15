@@ -20,7 +20,7 @@ func TestRecoveryAndCorruption(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state.Domains = []string{domain}
+	state.Entries = []core.Entry{{Domain: domain}}
 	if err := store.Save(state); err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestRecoveryAndCorruption(t *testing.T) {
 		t.Fatal(err)
 	}
 	recovered, err := New(dir, nil).Load()
-	if err != nil || recovered.Domains[number0] != domain {
+	if err != nil || recovered.Entries[number0].Domain != domain {
 		t.Fatal(recovered, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, backup), []byte(broken), mode); err != nil {
@@ -48,14 +48,14 @@ func TestInterruptedWriteKeepsValidCopy(t *testing.T) {
 	dir := t.TempDir()
 	store := New(dir, nil)
 	state := core.EmptyState()
-	state.Domains = []string{domain}
+	state.Entries = []core.Entry{{Domain: domain}}
 	if err := store.Save(state); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, temporary), []byte(incomplete), mode); err != nil {
 		t.Fatal(err)
 	}
-	if loaded, err := New(dir, nil).Load(); err != nil || len(loaded.Domains) != len(state.Domains) {
+	if loaded, err := New(dir, nil).Load(); err != nil || len(loaded.Entries) != len(state.Entries) {
 		t.Fatal(loaded, err)
 	}
 }
@@ -69,7 +69,7 @@ func TestNewestValidGenerationWins(t *testing.T) {
 	dir := t.TempDir()
 	store := New(dir, nil)
 	state := core.EmptyState()
-	state.Domains = []string{first}
+	state.Entries = []core.Entry{{Domain: first}}
 	if err := store.Save(state); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestNewestValidGenerationWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state.Domains = []string{second}
+	state.Entries = []core.Entry{{Domain: second}}
 	if err := store.Save(state); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestNewestValidGenerationWins(t *testing.T) {
 		t.Fatal(err)
 	}
 	loaded, err := New(dir, nil).Load()
-	if err != nil || loaded.Domains[number0] != second {
+	if err != nil || loaded.Entries[number0].Domain != second {
 		t.Fatal(loaded, err)
 	}
 	newer, err := os.ReadFile(filepath.Join(dir, primary))
@@ -99,7 +99,7 @@ func TestNewestValidGenerationWins(t *testing.T) {
 		t.Fatal(err)
 	}
 	loaded, err = New(dir, nil).Load()
-	if err != nil || loaded.Domains[number0] != second {
+	if err != nil || loaded.Entries[number0].Domain != second {
 		t.Fatal(loaded, err)
 	}
 }
@@ -114,13 +114,13 @@ func TestPartialSaveReportsFailureAndRecoversCommittedCopy(t *testing.T) {
 	}
 	repo := New(dir, nil)
 	state := core.EmptyState()
-	state.Domains = []string{domain}
+	state.Entries = []core.Entry{{Domain: domain}}
 	if err := repo.Save(state); err == nil {
 		t.Fatal(core.ErrStorage)
 	}
 	loaded, err := New(dir, nil).Load()
 
-	if err != nil || loaded.Domains[zero] != domain {
+	if err != nil || loaded.Entries[zero].Domain != domain {
 		t.Fatal(loaded, err)
 	}
 }

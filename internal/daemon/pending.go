@@ -30,67 +30,62 @@ func replacementCode(previous string) (string, error) {
 	}
 }
 
-func (e *Engine) candidate(req core.Request, now time.Time) (core.State, error) {
+func (e *Engine) candidate(req core.Request, now time.Time) (core.Lock, error) {
 	const zero = 0
-	state := e.state.Clone()
-	if len(state.Domains) == zero {
-		return core.State{}, core.ErrInvalid
+	if !validIndex(req.Entry, len(e.state.Entries)) {
+		return core.Lock{}, core.ErrInvalid
 	}
-	if req.Cmd != core.AddWindow && req.Cmd != core.EditWindow && state.Lock != nil {
-		return core.State{}, core.ErrHasLock
+	current := e.state.Entries[*req.Entry].Lock.Clone()
+	if req.Cmd != core.AddWindow && req.Cmd != core.EditWindow && current != nil {
+		return core.Lock{}, core.ErrHasLock
 	}
 	switch req.Cmd {
 	case core.CreateDaily:
 		if len(req.Windows) == zero {
-			return core.State{}, core.ErrInvalid
+			return core.Lock{}, core.ErrInvalid
 		}
-		state.Lock = &core.Lock{Kind: core.Daily, Zone: e.zone}
+		lock := core.Lock{Kind: core.Daily, Zone: e.zone}
 		for _, input := range req.Windows {
 			window, err := core.ParseWindow(input)
 			if err != nil {
-				return core.State{}, err
+				return core.Lock{}, err
 			}
-			state.Lock.Windows = append(state.Lock.Windows, window)
+			lock.Windows = append(lock.Windows, window)
 		}
-		if err := core.ValidateWindows(state.Lock.Windows); err != nil {
-			return core.State{}, err
-		}
+		return lock, core.ValidateWindows(lock.Windows)
 	case core.AddWindow, core.EditWindow:
-		if state.Lock == nil || state.Lock.Kind != core.Daily {
-			return core.State{}, core.ErrInvalid
+		if current == nil || current.Kind != core.Daily {
+			return core.Lock{}, core.ErrInvalid
 		}
 		window, err := core.ParseWindow(core.InputWindow{Start: req.Start, End: req.End})
 		if err != nil {
-			return core.State{}, err
+			return core.Lock{}, err
 		}
 		if req.Cmd == core.EditWindow {
-			if !validIndex(req.Index, len(state.Lock.Windows)) {
-				return core.State{}, core.ErrInvalid
+			if !validIndex(req.Index, len(current.Windows)) {
+				return core.Lock{}, core.ErrInvalid
 			}
-			state.Lock.Windows[*req.Index] = window
+			current.Windows[*req.Index] = window
 		} else {
-			state.Lock.Windows = append(state.Lock.Windows, window)
+			current.Windows = append(current.Windows, window)
 		}
-		if err := core.ValidateWindows(state.Lock.Windows); err != nil {
-			return core.State{}, err
-		}
+		return *current, core.ValidateWindows(current.Windows)
 	case core.CreateRange:
 		duration, err := core.Duration(req.Duration)
 		if err != nil {
-			return core.State{}, err
+			return core.Lock{}, err
 		}
-		state.Lock = &core.Lock{Kind: core.Range, Zone: e.zone, StartAt: now.Unix(), EndAt: now.Add(duration).Unix()}
+		return core.Lock{Kind: core.Range, Zone: e.zone, StartAt: now.Unix(), EndAt: now.Add(duration).Unix()}, nil
 	default:
-		return core.State{}, core.ErrInvalid
+		return core.Lock{}, core.ErrInvalid
 	}
-	return state, nil
 }
 
 func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Response {
 	const lifetime = 60
 
 	const empty = ""
-	candidate, err := e.candidate(req, now)
+	lock, err := e.candidate(req, now)
 	if err != nil {
 		return failure(err, now)
 	}
@@ -103,12 +98,12 @@ func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Res
 	if err != nil {
 		return failure(err, now)
 	}
-	e.pending = &Pending{Op: req.Cmd, Candidate: candidate, Code: code, ExpireAt: now.Unix() + lifetime, Owner: owner}
+	e.pending = &Pending{Op: req.Cmd, Entry: *req.Entry, Domain: e.state.Entries[*req.Entry].Domain, Lock: lock, Code: code, ExpireAt: now.Unix() + lifetime, Owner: owner}
 	return e.pendingResponse(now)
 }
 
 func (e *Engine) pendingResponse(now time.Time) core.Response {
-	preview := e.pending.Candidate.Clone()
+	preview := core.Entry{Domain: e.pending.Domain, Lock: e.pending.Lock.Clone()}
 	return core.Response{OK: true, Pending: true, Code: e.pending.Code, ExpiresIn: e.pending.ExpireAt - now.Unix(), Failures: e.pending.Failures, Preview: &preview, Now: now.Unix()}
 }
 
@@ -137,12 +132,18 @@ func (e *Engine) confirm(code string, owner uint64, now time.Time) core.Response
 		response.OK, response.Error = false, core.ErrBadCode
 		return response
 	}
-	candidate := e.pending.Candidate.Clone()
-	if candidate.Lock.Kind == core.Range {
-		span := candidate.Lock.EndAt - candidate.Lock.StartAt
-		candidate.Lock.StartAt, candidate.Lock.EndAt = now.Unix(), now.Unix()+span
-	}
+	pending := e.pending
 	e.pending = nil
+	lock := pending.Lock.Clone()
+	if lock.Kind == core.Range {
+		span := lock.EndAt - lock.StartAt
+		lock.StartAt, lock.EndAt = now.Unix(), now.Unix()+span
+	}
+	candidate := e.state.Clone()
+	if !validIndex(&pending.Entry, len(candidate.Entries)) || candidate.Entries[pending.Entry].Domain != pending.Domain {
+		return failure(core.ErrInvalid, now)
+	}
+	candidate.Entries[pending.Entry].Lock = lock
 	if err := e.commit(candidate, now); err != nil {
 		return failure(err, now)
 	}

@@ -39,11 +39,11 @@ func (s *Store) paths() []string {
 	return []string{filepath.Join(s.dir, primary), filepath.Join(s.dir, backup)}
 }
 
-func checksum(state core.State, generation uint64) (string, error) {
+func checksum(state any, generation uint64) (string, error) {
 	const empty = ""
 	type payload struct {
-		Generation uint64     `json:"generation"`
-		State      core.State `json:"state"`
+		Generation uint64 `json:"generation"`
+		State      any    `json:"state"`
 	}
 	data, err := json.Marshal(payload{Generation: generation, State: state})
 	if err != nil {
@@ -65,18 +65,58 @@ func readRecord(path string) (record, error) {
 	if err != nil {
 		return record{}, err
 	}
-	var result record
-	if err := json.Unmarshal(data, &result); err != nil {
+	result, err := decodeRecord(data)
+	if err != nil {
 		return record{}, err
-	}
-	sum, err := checksum(result.State, result.Generation)
-	if err != nil || sum != result.Checksum {
-		return record{}, core.ErrStorage
 	}
 	if err := result.State.Validate(); err != nil {
 		return record{}, err
 	}
 	return result, nil
+}
+
+func decodeRecord(data []byte) (record, error) {
+	const legacyVersion = 1
+	var raw struct {
+		Generation uint64          `json:"generation"`
+		State      json.RawMessage `json:"state"`
+		Checksum   string          `json:"checksum"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return record{}, err
+	}
+	var probe struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(raw.State, &probe); err != nil {
+		return record{}, err
+	}
+	if probe.Version == legacyVersion {
+		var legacy legacyState
+		if err := json.Unmarshal(raw.State, &legacy); err != nil {
+			return record{}, err
+		}
+		if err := verify(legacy, raw.Generation, raw.Checksum); err != nil {
+			return record{}, err
+		}
+		return record{Generation: raw.Generation, State: legacy.migrate(), Checksum: raw.Checksum}, nil
+	}
+	var state core.State
+	if err := json.Unmarshal(raw.State, &state); err != nil {
+		return record{}, err
+	}
+	if err := verify(state, raw.Generation, raw.Checksum); err != nil {
+		return record{}, err
+	}
+	return record{Generation: raw.Generation, State: state, Checksum: raw.Checksum}, nil
+}
+
+func verify(state any, generation uint64, expected string) error {
+	sum, err := checksum(state, generation)
+	if err != nil || sum != expected {
+		return core.ErrStorage
+	}
+	return nil
 }
 
 func (s *Store) Load() (core.State, error) {

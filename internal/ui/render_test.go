@@ -83,3 +83,17 @@ func TestConfirmationUsesRealCharactersInSeparateCells(t *testing.T) {
 		t.Fatal(model.confirmCode())
 	}
 }
+
+func TestFrameHelpersStayPlainAndFitWidth(t *testing.T) {
+	const narrow, escape, corner, prompt, title, key, label, reason = 20, "\x1b[", "╭", "> example.com_", "✻ saveme", "e", "edit", "locked"
+	const text, disabled = "example.com", "e edit (locked)"
+	model := readyModel().Appearance(true, true)
+	frame := model.header() + model.inputBox(text) + model.keys(keyHint{key: key, label: label, reason: reason})
+	if strings.Contains(frame, escape) || !strings.Contains(frame, corner) || !strings.Contains(frame, title) || !strings.Contains(frame, prompt) || !strings.Contains(frame, disabled) {
+		t.Fatal(frame)
+	}
+	model, _ = model.Update(Resize{Width: narrow})
+	if lipgloss.Width(model.header()) > narrow || lipgloss.Width(model.View()) > narrow {
+		t.Fatal(model.View())
+	}
+}

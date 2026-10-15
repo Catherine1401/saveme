@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ func TestLockedCountdownCentersAndResizesWithoutChangingTime(t *testing.T) {
 	const width, height, narrow, short, now, end = 80, 24, 24, 10, 1000, 4661
 	const label, block, newline = "Locked: 01:01:01 remaining", "━", "\n"
 	model := readyModel().Appearance(true, true)
-	model.status = core.Response{OK: true, Active: true, Now: now, EndAt: end}
+	model.screen, model.status = domainLocked, core.Response{OK: true, Now: now, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: end}}}
 	model, _ = model.Update(Resize{Width: width, Height: height})
 	before := model.status
 	view := model.View()
@@ -25,7 +26,7 @@ func TestLockedCountdownCentersAndResizesWithoutChangingTime(t *testing.T) {
 	}
 	model, _ = model.Update(Resize{Width: narrow, Height: short})
 	view = model.View()
-	if strings.Contains(view, block) || !strings.Contains(strings.Join(strings.Fields(view), " "), label) || model.status != before {
+	if strings.Contains(view, block) || !strings.Contains(strings.Join(strings.Fields(view), " "), label) || !reflect.DeepEqual(model.status, before) {
 		t.Fatal(view, model.status)
 	}
 }
@@ -36,7 +37,7 @@ func TestLargeCountdownHandlesDaysAndAllDigits(t *testing.T) {
 		t.Fatal(drawClock(digits))
 	}
 	model := readyModel()
-	model.status = core.Response{OK: true, Active: true, EndAt: days}
+	model.screen, model.status = domainLocked, core.Response{OK: true, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: days}}}
 	model, _ = model.Update(Resize{Width: width, Height: height})
 	if !strings.Contains(model.View(), label) {
 		t.Fatal(model.View())

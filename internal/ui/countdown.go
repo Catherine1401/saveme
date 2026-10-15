@@ -9,11 +9,12 @@ import (
 
 func (m Model) lockedView() string {
 	const zero, minHeight, margin = 0, 14, 4
-	const title, infinite, format, message, footer = "saveme", "Locked with no release time.", "Locked: %s remaining", "Website blocking is active.", "q quit"
-	const newline, gap, separator = "\n", "\n\n", " "
+	const title, infinite, format, message, footer = "saveme", "Locked with no release time.", "Locked: %s remaining", "%s is blocked.", "back"
+	const newline, gap, separator, quitKey = "\n", "\n\n", " ", "q"
+	entry, _ := m.current()
 	label, large := infinite, ""
-	if m.status.EndAt != zero {
-		remaining := countdown(m.status.EndAt - m.status.Now)
+	if entry.EndAt != zero {
+		remaining := countdown(entry.EndAt - m.status.Now)
 		label = fmt.Sprintf(format, remaining)
 		parts := strings.Split(remaining, separator)
 		clock := drawClock(parts[len(parts)-1])
@@ -21,10 +22,11 @@ func (m Model) lockedView() string {
 			large = m.ink(clock, toneAccent, true) + gap
 		}
 	}
-	content := m.ink(title, toneAccent, true) + gap + large + m.ink(label, toneText, true) + newline + m.ink(message, toneMuted, false) + gap + m.hint(footer)
+	content := m.ink(title, toneAccent, true) + gap + large + m.ink(label, toneText, true) + newline + m.ink(fmt.Sprintf(message, entry.Domain), toneMuted, false) + gap + strings.TrimSpace(m.keys(keyHint{key: quitKey, label: footer}))
 	const empty, working = "", " Working…"
 	if m.error != empty {
-		content += gap + m.ink(m.error, toneError, true)
+		const errorPrefix = "⎿ "
+		content += gap + m.ink(errorPrefix+m.error, toneError, true)
 	}
 	if m.busy {
 		content += gap + m.spinner() + m.ink(working, toneMuted, false)

@@ -26,11 +26,11 @@ func TestUpdateGuardPreservesState(t *testing.T) {
 	}
 	for _, scenario := range cases {
 		t.Run(scenario.name, func(t *testing.T) {
-			const domain, primary = "example.com", "state.json"
+			const domain, other, primary = "example.com", "other.com", "state.json"
 			const changed, expected = "guard changed stored state", "unexpected update permission"
 			cfg := config.Config{StateDir: t.TempDir()}
 			state := core.EmptyState()
-			state.Domains, state.Lock = []string{domain}, scenario.lock
+			state.Entries = []core.Entry{{Domain: domain}, {Domain: other, Lock: scenario.lock}}
 			if err := store.New(cfg.StateDir, nil).Save(state); err != nil {
 				t.Fatal(err)
 			}

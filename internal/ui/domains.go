@@ -8,20 +8,33 @@ import (
 )
 
 func (m Model) domainListKey(key KeyMsg) (Model, Cmd) {
-	const add, edit, remove, empty, zero = "a", "e", "d", "", 0
-	domains := m.status.State.Domains
-	m.selected = move(key.String(), m.selected, len(domains))
+	const add, edit, remove, enter, empty, zero = "a", "e", "d", "enter", "", 0
+	const lockedDomain = "Locked domains cannot be edited or deleted."
+	entries := m.status.Entries
+	m.selected = move(key.String(), m.selected, len(entries))
 	switch key.String() {
 	case add:
 		m.domainText, m.editingDomain, m.screen = empty, false, domainEdit
-	case edit:
-		if len(domains) > zero {
-			m.domainText, m.editingDomain, m.screen = domains[m.selected], true, domainEdit
-		}
-	case remove:
-		if len(domains) > zero {
-			return m.submit(core.Request{Cmd: core.DeleteDomain, Index: &m.selected})
-		}
+		return m, nil
+	case enter:
+		return m.openDomain()
+	}
+	if len(entries) == zero || (key.String() != edit && key.String() != remove) {
+		return m, nil
+	}
+	selected := entries[m.selected]
+	if selected.Active {
+		m.error = lockedDomain
+		return m, nil
+	}
+	m.entry = m.selected
+	switch {
+	case key.String() == edit:
+		m.domainText, m.editingDomain, m.screen = selected.Domain, true, domainEdit
+	case scheduled(selected):
+		m.screen = domainDelete
+	default:
+		return m.submit(core.Request{Cmd: core.DeleteDomain, Index: &m.entry})
 	}
 	return m, nil
 }
@@ -41,7 +54,7 @@ func (m Model) domainKey(key KeyMsg) (Model, Cmd) {
 		}
 		request := core.Request{Cmd: core.AddDomain, Domain: domain}
 		if m.editingDomain {
-			request.Cmd, request.Index = core.EditDomain, &m.selected
+			request.Cmd, request.Index = core.EditDomain, &m.entry
 		}
 		return m.submit(request)
 	case backspace:

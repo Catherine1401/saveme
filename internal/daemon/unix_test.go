@@ -46,18 +46,19 @@ func unixServer(t *testing.T, reject bool) string {
 
 func TestUnixSocketPeerAndConfirmation(t *testing.T) {
 	const duration = "12h"
+	const target = 0
 	path := unixServer(t, false)
 	client, err := Dial(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	response, err := client.Call(core.Request{Cmd: core.CreateRange, Duration: duration})
+	response, err := client.Call(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration})
 	if err != nil || !response.Pending {
 		t.Fatal(response, err)
 	}
 	response, err = client.Call(core.Request{Cmd: core.Confirm, Code: response.Code})
-	if err != nil || !response.Active || response.State != nil {
+	if err != nil || !response.Active || response.Entries[target].Windows != nil {
 		t.Fatal(response, err)
 	}
 }

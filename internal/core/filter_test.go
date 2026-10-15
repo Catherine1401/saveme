@@ -7,10 +7,9 @@ import (
 
 func TestFilterActivatesAndReleases(t *testing.T) {
 	const domain, subdomain, count = "example.com", "a.example.com", 16
-	state := EmptyState()
-	state.Domains = []string{domain}
+	blocked := []string{domain}
 	filter := &Filter{}
-	filter.Set(state, true)
+	filter.Set(blocked)
 	if !filter.Blocked(subdomain) {
 		const (
 			textSubdomainNotBlocked = "subdomain not blocked"
@@ -25,10 +24,10 @@ func TestFilterActivatesAndReleases(t *testing.T) {
 		)
 
 		group.Add(number1)
-		go func() { defer group.Done(); filter.Blocked(subdomain); filter.Set(state, true) }()
+		go func() { defer group.Done(); filter.Blocked(subdomain); filter.Set(blocked) }()
 	}
 	group.Wait()
-	filter.Set(state, false)
+	filter.Set(nil)
 	if filter.Blocked(subdomain) {
 		const (
 			textDomainStillBlockedAfterRelease = "domain still blocked after release"

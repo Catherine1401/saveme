@@ -18,10 +18,12 @@ const (
 	windowList
 	windowEdit
 	rangeList
-	domainList
 	domainEdit
 	confirmation
 	lastWindow
+	domainMenu
+	domainLocked
+	domainDelete
 )
 
 type Model struct {
@@ -33,6 +35,7 @@ type Model struct {
 	screen         screen
 	previous       screen
 	selected       int
+	entry          int
 	error          string
 	busy           bool
 	ready          bool
@@ -120,20 +123,12 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		return m, nil
 	}
 	if value.request.Cmd == core.Status {
-		wasActive := m.status.Active
 		m.status, m.ready = value.response, true
 		if !value.response.OK {
 			m.error = value.response.Message
 		}
-		if m.status.Active {
-			m.clearConfirmation()
-			m.screen = mainScreen
-			if !wasActive {
-				const pulse = 10
-				m.appearance.flash = pulse
-				return m, ClearScreen
-			}
-			return m, nil
+		if model, action, changed := m.follow(); changed {
+			return model, action
 		}
 		if m.screen == confirmation && m.status.Now >= m.pending.Now+m.pending.ExpiresIn {
 			const (
@@ -158,7 +153,7 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		}
 		return m, ClearScreen
 	}
-	if !value.response.OK {
+	if !succeeded(value) {
 		m.error = string(value.response.Error)
 		if m.screen == confirmation {
 			m.screen = m.previous
@@ -168,7 +163,7 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		return m, m.call(core.Request{Cmd: core.Status})
 	}
 	m.error = empty
-	if value.response.State != nil || value.response.Active {
+	if value.request.Cmd != core.Cancel {
 		m.status = value.response
 	}
 	switch value.request.Cmd {
@@ -176,16 +171,43 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		const pulse = 10
 		m.appearance.flash = pulse
 		m.clearConfirmation()
-		m.screen, m.selected = mainScreen, zero
+		m.screen, m.selected = mainScreen, m.entry
 	case core.Cancel:
 		m.clearConfirmation()
 		m.screen = m.previous
-	case core.AddDomain, core.EditDomain:
-		m.screen = domainList
+	case core.AddDomain, core.EditDomain, core.DeleteDomain:
+		m.screen, m.selected = mainScreen, move(empty, m.selected, len(m.status.Entries))
 	case core.DeleteWindow:
 		m.screen = windowList
 	}
 	return m, Batch(ClearScreen, m.call(core.Request{Cmd: core.Status}))
+}
+
+// Thêm domain khi NTP chưa tin cậy vẫn thành công và trả status kèm ERR_CLOCK_UNSYNC.
+func succeeded(value reply) bool {
+	const zero = 0
+	unsynchronized := value.request.Cmd == core.AddDomain && value.response.Error == core.ErrClockUnsync && len(value.response.Entries) > zero
+	return value.response.OK || unsynchronized
+}
+
+// Đồng bộ màn hình theo trạng thái khóa mới nhất của domain đang thao tác.
+func (m Model) follow() (Model, Cmd, bool) {
+	const zero, pulse = 0, 10
+	scoped := m.screen != mainScreen && m.screen != domainEdit
+	entry, ok := m.current()
+	switch {
+	case scoped && !ok:
+		m.clearConfirmation()
+		m.screen, m.selected = mainScreen, zero
+	case scoped && entry.Active && m.screen != domainLocked:
+		m.clearConfirmation()
+		m.screen, m.appearance.flash = domainLocked, pulse
+	case m.screen == domainLocked && !entry.Active:
+		m.screen, m.selected = domainMenu, zero
+	default:
+		return m, nil, false
+	}
+	return m, ClearScreen, true
 }
 
 func (m *Model) clearConfirmation() {

@@ -20,25 +20,41 @@ type Lock struct {
 	EndAt   int64    `json:"end_at,omitempty"`
 }
 
-type State struct {
-	Version int      `json:"version"`
-	Domains []string `json:"domains"`
-	Lock    *Lock    `json:"lock,omitempty"`
-	MaxSeen int64    `json:"max_seen"`
+type Entry struct {
+	Domain string `json:"domain"`
+	Lock   *Lock  `json:"lock,omitempty"`
 }
 
+type State struct {
+	Version int     `json:"version"`
+	Entries []Entry `json:"entries"`
+	MaxSeen int64   `json:"max_seen"`
+}
+
+const StateVersion = 2
+
 func EmptyState() State {
-	const version = 1
-	return State{Version: version, Domains: []string{}}
+	return State{Version: StateVersion, Entries: []Entry{}}
+}
+
+func (l *Lock) Clone() *Lock {
+	if l == nil {
+		return nil
+	}
+	lock := *l
+	lock.Windows = append([]Window{}, l.Windows...)
+	return &lock
+}
+
+func (e Entry) Clone() Entry {
+	return Entry{Domain: e.Domain, Lock: e.Lock.Clone()}
 }
 
 func (s State) Clone() State {
 	copy := s
-	copy.Domains = append([]string{}, s.Domains...)
-	if s.Lock != nil {
-		lock := *s.Lock
-		lock.Windows = append([]Window{}, lock.Windows...)
-		copy.Lock = &lock
+	copy.Entries = make([]Entry, len(s.Entries))
+	for index, entry := range s.Entries {
+		copy.Entries[index] = entry.Clone()
 	}
 	return copy
 }

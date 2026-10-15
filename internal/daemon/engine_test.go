@@ -32,18 +32,22 @@ func (r *memoryStore) Save(state core.State) error {
 }
 
 type fakeEnforcer struct {
-	active bool
-	fail   bool
+	active  bool
+	blocked []string
+	fail    bool
 }
 
-func (f *fakeEnforcer) Apply(_ core.State, active bool) error {
-	const reason = "enforcement failure"
+func (f *fakeEnforcer) Apply(blocked []string) error {
+	const reason, zero = "enforcement failure", 0
 	if f.fail {
 		return errors.New(reason)
 	}
-	f.active = active
+	f.blocked, f.active = append([]string{}, blocked...), len(blocked) > zero
 	return nil
 }
+
+// Trả về con trỏ chỉ số mới cho mỗi request.
+func at(index int) *int { return &index }
 
 type asciiNormalizer struct{}
 
@@ -75,7 +79,7 @@ func newFixture(t *testing.T) fixture {
 	clock := &fakeClock{now: now, trusted: true}
 	repo, enforce := &memoryStore{}, &fakeEnforcer{}
 	state := core.EmptyState()
-	state.Domains = []string{domain}
+	state.Entries = []core.Entry{{Domain: domain}}
 	engine, err := New(state, clock, repo, enforce, asciiNormalizer{}, zone)
 	if err != nil {
 		t.Fatal(err)
@@ -85,10 +89,10 @@ func newFixture(t *testing.T) fixture {
 
 func createRange(t *testing.T, f fixture) core.Response {
 
-	const owner, duration = 1, "12h"
+	const owner, duration, target = 1, "12h", 0
 	t.Helper()
 
-	response := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: duration}, owner)
+	response := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}, owner)
 	if !response.Pending {
 		t.Fatal(response)
 	}
@@ -99,20 +103,27 @@ func createRange(t *testing.T, f fixture) core.Response {
 	return response
 }
 
-func TestEveryMutationDeniedAndStatusRedacted(t *testing.T) {
-	const owner = 1
+func TestLockedDomainMutationsDeniedAndStatusRedacted(t *testing.T) {
+	const owner, target = 1, 0
 	f := newFixture(t)
 	createRange(t, f)
 	f.enforcer.fail = true
-	commands := []core.Command{core.CreateDaily, core.AddWindow, core.EditWindow, core.DeleteWindow, core.CreateRange, core.Confirm, core.Cancel, core.AddDomain, core.EditDomain, core.DeleteDomain}
-	for _, command := range commands {
-		response := f.engine.Handle(core.Request{Cmd: command}, owner)
+	byEntry := []core.Command{core.CreateDaily, core.AddWindow, core.EditWindow, core.DeleteWindow, core.CreateRange}
+	for _, command := range byEntry {
+		response := f.engine.Handle(core.Request{Cmd: command, Entry: at(target), Index: at(target)}, owner)
+		if response.Error != core.ErrLocked {
+			t.Fatal(command, response)
+		}
+	}
+	for _, command := range []core.Command{core.EditDomain, core.DeleteDomain} {
+		response := f.engine.Handle(core.Request{Cmd: command, Index: at(target), Confirmed: true}, owner)
 		if response.Error != core.ErrLocked {
 			t.Fatal(command, response)
 		}
 	}
 	status := f.engine.Handle(core.Request{Cmd: core.Status}, owner)
-	if status.State != nil || status.Preview != nil || !status.Active {
+	entry := status.Entries[target]
+	if status.Preview != nil || !status.Active || !entry.Active || entry.Windows != nil || entry.EndAt == target {
 		t.Fatal(status)
 	}
 }
@@ -120,7 +131,8 @@ func TestEveryMutationDeniedAndStatusRedacted(t *testing.T) {
 func TestPendingExpiresRotatesAndIsOwned(t *testing.T) {
 	const owner, otherOwner, duration, wrong, ttl, attempts = 1, 2, "12h", "wrong", 60 * time.Second, 3
 	f := newFixture(t)
-	request := core.Request{Cmd: core.CreateRange, Duration: duration}
+	const target = 0
+	request := core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}
 	initial := f.engine.Handle(request, owner)
 	foreign := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: initial.Code}, otherOwner)
 	if foreign.Error != core.ErrBadCode {
@@ -156,18 +168,18 @@ func TestPendingReplacementCancellationAndDomainChange(t *testing.T) {
 		number24 = 24
 	)
 
-	const owner, firstDuration, secondDuration, domain = 1, "12h", "1d", "youtube.com"
+	const owner, firstDuration, secondDuration, domain, target = 1, "12h", "1d", "youtube.com", 0
 	f := newFixture(t)
-	f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: firstDuration}, owner)
-	second := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: secondDuration}, owner)
-	if f.engine.pending.Candidate.Lock.EndAt-f.engine.pending.Candidate.Lock.StartAt != int64(number24*time.Hour/time.Second) {
+	f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: firstDuration}, owner)
+	second := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: secondDuration}, owner)
+	if f.engine.pending.Lock.EndAt-f.engine.pending.Lock.StartAt != int64(number24*time.Hour/time.Second) {
 		t.Fatal(second)
 	}
 	f.engine.Handle(core.Request{Cmd: core.Cancel}, owner)
 	if response := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: second.Code}, owner); response.Error != core.ErrBadCode {
 		t.Fatal(response)
 	}
-	third := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: firstDuration}, owner)
+	third := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: firstDuration}, owner)
 	f.engine.Handle(core.Request{Cmd: core.AddDomain, Domain: domain}, owner)
 	if response := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: third.Code}, owner); response.Error != core.ErrBadCode {
 		t.Fatal(response)
@@ -184,17 +196,17 @@ func TestConfirmationUsesCurrentTimeAndRechecksDaily(t *testing.T) {
 		text1500 = "15:00"
 	)
 
-	const owner, duration, wait, span = 1, "12h", 30 * time.Second, 12 * time.Hour
+	const owner, duration, wait, span, target = 1, "12h", 30 * time.Second, 12 * time.Hour, 0
 	f := newFixture(t)
-	preview := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: duration}, owner)
+	preview := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}, owner)
 	f.clock.now = f.clock.now.Add(wait)
 	response := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: preview.Code}, owner)
-	if response.EndAt != f.clock.now.Add(span).Unix() {
+	if response.Entries[target].EndAt != f.clock.now.Add(span).Unix() {
 		t.Fatal(response)
 	}
 	f = newFixture(t)
-	f.engine.state.Lock = &core.Lock{Kind: core.Daily, Zone: textUTC, Windows: []core.Window{{Start: number12*number60 + owner, End: number13 * number60}}}
-	preview = f.engine.Handle(core.Request{Cmd: core.AddWindow, Start: text1400, End: text1500}, owner)
+	f.engine.state.Entries[target].Lock = &core.Lock{Kind: core.Daily, Zone: textUTC, Windows: []core.Window{{Start: number12*number60 + owner, End: number13 * number60}}}
+	preview = f.engine.Handle(core.Request{Cmd: core.AddWindow, Entry: at(target), Start: text1400, End: text1500}, owner)
 	if !preview.Pending {
 		t.Fatal(preview)
 	}
@@ -205,7 +217,7 @@ func TestConfirmationUsesCurrentTimeAndRechecksDaily(t *testing.T) {
 	}
 }
 
-func TestDailyStartsImmediatelyAndFinalDomainIsProtected(t *testing.T) {
+func TestDailyStartsImmediatelyAndScheduledDomainNeedsConfirmation(t *testing.T) {
 	const (
 		text1200 = "12:00"
 		text1300 = "13:00"
@@ -213,18 +225,18 @@ func TestDailyStartsImmediatelyAndFinalDomainIsProtected(t *testing.T) {
 
 	const owner, index, nextDay = 1, 0, 24 * time.Hour
 	f := newFixture(t)
-	preview := f.engine.Handle(core.Request{Cmd: core.CreateDaily, Windows: []core.InputWindow{{Start: text1200, End: text1300}}}, owner)
+	preview := f.engine.Handle(core.Request{Cmd: core.CreateDaily, Entry: at(index), Windows: []core.InputWindow{{Start: text1200, End: text1300}}}, owner)
 	response := f.engine.Handle(core.Request{Cmd: core.Confirm, Code: preview.Code}, owner)
 	if !response.Active {
 		t.Fatal(response)
 	}
 	f.clock.now = f.clock.now.Add(nextDay - time.Hour)
-	response = f.engine.Handle(core.Request{Cmd: core.DeleteDomain, Index: func() *int { value := index; return &value }()}, owner)
+	response = f.engine.Handle(core.Request{Cmd: core.DeleteDomain, Index: at(index)}, owner)
 	if response.Error != core.ErrInvalid {
 		t.Fatal(response)
 	}
 	value := index
-	response = f.engine.Handle(core.Request{Cmd: core.DeleteWindow, Index: &value}, owner)
+	response = f.engine.Handle(core.Request{Cmd: core.DeleteWindow, Entry: at(index), Index: &value}, owner)
 	if response.Error != core.ErrInvalid {
 		const (
 			textLastWindowNeedsConfirmation = "last window needs confirmation"
@@ -232,8 +244,8 @@ func TestDailyStartsImmediatelyAndFinalDomainIsProtected(t *testing.T) {
 
 		t.Fatal(textLastWindowNeedsConfirmation, response)
 	}
-	response = f.engine.Handle(core.Request{Cmd: core.DeleteWindow, Index: &value, Confirmed: true}, owner)
-	if !response.OK || response.State.Lock != nil {
+	response = f.engine.Handle(core.Request{Cmd: core.DeleteWindow, Entry: at(index), Index: &value, Confirmed: true}, owner)
+	if !response.OK || response.Entries[index].Kind != "" || f.repo.state.Entries[index].Lock != nil {
 		t.Fatal(response)
 	}
 }
@@ -243,7 +255,7 @@ func TestExpiryRestartAndClockTrust(t *testing.T) {
 		textUTC = "UTC"
 	)
 
-	const owner, span, domain = 1, 12 * time.Hour, "youtube.com"
+	const owner, span, domain, first, count = 1, 12 * time.Hour, "youtube.com", 0, 2
 	f := newFixture(t)
 	createRange(t, f)
 	restarted, err := New(f.repo.state, f.clock, f.repo, f.enforcer, asciiNormalizer{}, textUTC)
@@ -252,11 +264,15 @@ func TestExpiryRestartAndClockTrust(t *testing.T) {
 	}
 	f.clock.now = f.clock.now.Add(span)
 	response := restarted.Handle(core.Request{Cmd: core.Status}, owner)
-	if response.Active || response.State.Lock != nil || f.enforcer.active {
+	if response.Active || response.Entries[first].Kind != "" || f.enforcer.active || f.repo.state.Entries[first].Lock != nil {
 		t.Fatal(response)
 	}
 	f.clock.trusted = false
 	response = restarted.Handle(core.Request{Cmd: core.AddDomain, Domain: domain}, owner)
+	if len(response.Entries) != count || len(f.repo.state.Entries) != count {
+		t.Fatal(response)
+	}
+	response = restarted.Handle(core.Request{Cmd: core.DeleteDomain, Index: at(first)}, owner)
 	if response.Error != core.ErrClockUnsync {
 		t.Fatal(response)
 	}
@@ -276,8 +292,8 @@ func TestConcurrentChangesAndStorageFailure(t *testing.T) {
 		go func() { defer group.Done(); f.engine.Handle(core.Request{Cmd: core.AddDomain, Domain: domain}, owner) }()
 	}
 	group.Wait()
-	if len(f.engine.state.Domains) != number2 {
-		t.Fatal(f.engine.state.Domains)
+	if len(f.engine.state.Entries) != number2 {
+		t.Fatal(f.engine.state.Entries)
 	}
 	f.repo.fail = true
 	response := f.engine.Handle(core.Request{Cmd: core.AddDomain, Domain: textRedditCom}, owner)
@@ -296,12 +312,12 @@ func TestConcurrentChangesAndStorageFailure(t *testing.T) {
 }
 
 func TestEnforcementFailureRetainsDurableLock(t *testing.T) {
-	const owner, duration = 1, "12h"
+	const owner, duration, target = 1, "12h", 0
 	f := newFixture(t)
-	preview := f.engine.Handle(core.Request{Cmd: core.CreateRange, Duration: duration}, owner)
+	preview := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}, owner)
 	f.enforcer.fail = true
 	response := f.engine.confirm(preview.Code, owner, f.clock.now)
-	if response.Error != core.ErrEnforcement || f.repo.state.Lock == nil || f.engine.state.Lock == nil {
+	if response.Error != core.ErrEnforcement || f.repo.state.Entries[target].Lock == nil || f.engine.state.Entries[target].Lock == nil {
 		t.Fatal(response)
 	}
 	f.enforcer.fail = false
@@ -311,12 +327,13 @@ func TestEnforcementFailureRetainsDurableLock(t *testing.T) {
 }
 
 func TestUntrustedClockKeepsExistingScheduleClosed(t *testing.T) {
-	const owner, zone, start, end = 1, "UTC", 22 * 60, 6 * 60
+	const owner, zone, start, end, target = 1, "UTC", 22 * 60, 6 * 60, 0
 	f := newFixture(t)
-	f.engine.state.Lock = &core.Lock{Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: start, End: end}}}
+	f.engine.state.Entries[target].Lock = &core.Lock{Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: start, End: end}}}
 	f.clock.trusted = false
 	response := f.engine.Handle(core.Request{Cmd: core.Status}, owner)
-	if !response.Active || response.State != nil || response.Error != core.ErrClockUnsync || !f.enforcer.active {
+	entry := response.Entries[target]
+	if !response.Active || !entry.Active || entry.Windows != nil || entry.EndAt != 0 || response.Error != core.ErrClockUnsync || !f.enforcer.active {
 		t.Fatal(response)
 	}
 }

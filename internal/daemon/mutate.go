@@ -13,26 +13,30 @@ func (e *Engine) mutate(state *core.State, req core.Request) error {
 	case core.AddDomain, core.EditDomain:
 		return e.changeDomain(state, req)
 	case core.DeleteDomain:
-		if !validIndex(req.Index, len(state.Domains)) {
+		if !validIndex(req.Index, len(state.Entries)) {
 			return core.ErrInvalid
 		}
-		if state.Lock != nil && len(state.Domains) == one {
+		if state.Entries[*req.Index].Lock != nil && !req.Confirmed {
 			return core.ErrInvalid
 		}
-		state.Domains = append(state.Domains[:*req.Index], state.Domains[*req.Index+one:]...)
+		state.Entries = append(state.Entries[:*req.Index], state.Entries[*req.Index+one:]...)
 		return nil
 	case core.DeleteWindow:
-		if state.Lock == nil || state.Lock.Kind != core.Daily || !validIndex(req.Index, len(state.Lock.Windows)) {
+		if !validIndex(req.Entry, len(state.Entries)) {
 			return core.ErrInvalid
 		}
-		if len(state.Lock.Windows) == one {
+		entry := &state.Entries[*req.Entry]
+		if entry.Lock == nil || entry.Lock.Kind != core.Daily || !validIndex(req.Index, len(entry.Lock.Windows)) {
+			return core.ErrInvalid
+		}
+		if len(entry.Lock.Windows) == one {
 			if !req.Confirmed {
 				return core.ErrInvalid
 			}
-			state.Lock = nil
+			entry.Lock = nil
 			return nil
 		}
-		state.Lock.Windows = append(state.Lock.Windows[:*req.Index], state.Lock.Windows[*req.Index+one:]...)
+		entry.Lock.Windows = append(entry.Lock.Windows[:*req.Index], entry.Lock.Windows[*req.Index+one:]...)
 		return nil
 	default:
 		return core.ErrInvalid
@@ -44,18 +48,18 @@ func (e *Engine) changeDomain(state *core.State, req core.Request) error {
 	if err != nil {
 		return err
 	}
-	if req.Cmd == core.EditDomain && !validIndex(req.Index, len(state.Domains)) {
+	if req.Cmd == core.EditDomain && !validIndex(req.Index, len(state.Entries)) {
 		return core.ErrInvalid
 	}
-	for index, existing := range state.Domains {
-		if existing == domain && (req.Cmd == core.AddDomain || index != *req.Index) {
+	for index, existing := range state.Entries {
+		if existing.Domain == domain && (req.Cmd == core.AddDomain || index != *req.Index) {
 			return core.ErrInvalid
 		}
 	}
 	if req.Cmd == core.AddDomain {
-		state.Domains = append(state.Domains, domain)
+		state.Entries = append(state.Entries, core.Entry{Domain: domain})
 	} else {
-		state.Domains[*req.Index] = domain
+		state.Entries[*req.Index].Domain = domain
 	}
 	return nil
 }

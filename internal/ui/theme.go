@@ -94,9 +94,8 @@ func (m Model) spinner() string {
 }
 
 func (m Model) decorate(body string) string {
-	const newline, empty, space, footer, escape, quit, ansi, code, block = "\n", "", " ", "Enter", "Esc", "q quit", "\x1b[", "Code:", "█"
+	const newline, empty, space, ansi, code, block = "\n", "", " ", "\x1b[", "Code:", "█"
 	const zero = 0
-	const arrows = "↑↓"
 	lines := strings.Split(body, newline)
 	for index, line := range lines {
 		if line == empty || strings.Contains(line, ansi) {
@@ -105,22 +104,12 @@ func (m Model) decorate(body string) string {
 		color, bold := toneMuted, false
 		if index == zero {
 			color, bold = toneAccent, true
-			if m.ready && !m.status.OK {
-				color = toneWarning
-			}
-		}
-		if strings.Contains(line, footer) || strings.Contains(line, escape) || strings.Contains(line, quit) || strings.Contains(line, arrows) {
-			lines[index] = m.hint(line)
-			continue
 		}
 		if m.screen == confirmation && (strings.Contains(line, block) || strings.Contains(line, code)) {
 			color, bold = toneConfirm, true
 			if m.appearance.flash > zero && !m.appearance.still {
 				color = toneAccent
 			}
-		}
-		if m.error != empty && strings.TrimSpace(line) == m.error {
-			color, bold = toneError, true
 		}
 		lines[index] = m.ink(line, color, bold)
 	}
@@ -133,11 +122,10 @@ func (m Model) decorate(body string) string {
 
 func (m Model) selectedRow(line string) string {
 	const newline = "\n"
-	const dark, light = "#19342F", "#DAF5E9"
 	if m.appearance.plain {
 		return line
 	}
-	return m.style(toneAccent).Background(lipgloss.AdaptiveColor{Dark: dark, Light: light}).Bold(true).Render(strings.TrimSuffix(line, newline)) + newline
+	return m.style(toneAccent).Bold(true).Render(strings.TrimSuffix(line, newline)) + newline
 }
 
 func (m Model) confirmCode() string {
@@ -147,32 +135,4 @@ func (m Model) confirmCode() string {
 		code = m.pending.Code
 	}
 	return m.ink(code, toneConfirm, true)
-}
-
-func (m Model) hint(line string) string {
-	const space = " "
-	const enter, escape, back, upDown, leftRight, quit = "Enter", "Esc", "q/Esc", "↑↓", "←→", "q"
-	const add, edit, remove, menuDigits, durationDigits = "a", "e", "d", "1–3", "1–9"
-	const vimVertical, vimHorizontal = "j/k / ↑↓", "h/l / ←→"
-	const verticalKeys, horizontalKeys, backKey, openKey = "j/k", "h/l", "h", "l"
-	if strings.Contains(line, upDown) && m.screen != windowEdit {
-		const menuNavigation, mainNavigation = "h back; l open; ", "l open; "
-		navigation := menuNavigation
-		if m.screen == mainScreen {
-			navigation = mainNavigation
-		}
-		line = navigation + strings.TrimSpace(line)
-	}
-	line = strings.ReplaceAll(line, upDown, vimVertical)
-	line = strings.ReplaceAll(line, leftRight, vimHorizontal)
-	words := strings.Fields(line)
-	for index, word := range words {
-		color, bold := toneMuted, false
-		switch word {
-		case enter, escape, back, upDown, leftRight, quit, add, edit, remove, menuDigits, durationDigits, verticalKeys, horizontalKeys, backKey, openKey:
-			color, bold = toneAccent, true
-		}
-		words[index] = m.ink(word, color, bold)
-	}
-	return space + strings.Join(words, space)
 }

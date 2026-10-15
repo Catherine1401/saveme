@@ -89,9 +89,7 @@ func TestDNSNetworkBlockingForwardingAndRelease(t *testing.T) {
 	const address, domain, blocked, subdomain, allowed, alias, zero, one = "127.0.0.1:0", "example.com", "example.com.", "a.example.com.", "allowed.test.", "alias.test.", 0, 1
 	const udp, tcp = "udp", "tcp"
 	filter := &core.Filter{}
-	state := core.EmptyState()
-	state.Domains = []string{domain}
-	filter.Set(state, true)
+	filter.Set([]string{domain})
 	remote := upstream(t, false)
 	service, err := Listen([]string{address}, &Resolver{Blocker: filter, Upstreams: []string{remote.udp}})
 	if err != nil {
@@ -118,7 +116,7 @@ func TestDNSNetworkBlockingForwardingAndRelease(t *testing.T) {
 			t.Fatal(response)
 		}
 	}
-	filter.Set(state, false)
+	filter.Set(nil)
 	response := exchange(t, server.udp, udp, blocked, miekg.TypeA)
 	if len(response.Answer) != one {
 		t.Fatal(response)
@@ -157,9 +155,8 @@ func TestDNSFacebookExactHosts(t *testing.T) {
 	const udp, tcp, zero, one = "udp", "tcp", 0, 1
 	const explicitChat = "edge-chat.facebook.com"
 	filter := &core.Filter{}
-	state := core.EmptyState()
-	state.Domains = []string{facebook}
-	filter.Set(state, true)
+	blocked := []string{facebook}
+	filter.Set(blocked)
 	remote := upstream(t, false)
 	service, err := Listen([]string{address}, &Resolver{Blocker: filter, Upstreams: []string{remote.udp}})
 	if err != nil {
@@ -182,12 +179,12 @@ func TestDNSFacebookExactHosts(t *testing.T) {
 			}
 		}
 	}
-	state.Domains = append(state.Domains, explicitChat)
-	filter.Set(state, true)
+	blocked = append(blocked, explicitChat)
+	filter.Set(blocked)
 	if response := exchange(t, server.udp, udp, chat, miekg.TypeA); len(response.Answer) != zero {
 		t.Fatal(response)
 	}
-	filter.Set(state, false)
+	filter.Set(nil)
 	if response := exchange(t, server.udp, udp, www, miekg.TypeA); len(response.Answer) != one {
 		t.Fatal(response)
 	}

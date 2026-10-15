@@ -32,10 +32,8 @@ func (c *recordingClient) Call(request core.Request) (core.Response, error) {
 
 func readyModel() Model {
 	const domain, now = "example.com", 1000
-	state := core.EmptyState()
-	state.Domains = []string{domain}
 	model := New(&recordingClient{}, localNormalizer{})
-	model.status, model.ready = core.Response{OK: true, State: &state, Now: now}, true
+	model.status, model.ready = core.Response{OK: true, Entries: []core.EntryStatus{{Domain: domain}}, Now: now}, true
 	return model
 }
 
@@ -49,16 +47,16 @@ func TestLockedViewHidesEveryMenu(t *testing.T) {
 		textA      = "a"
 	)
 
-	const protected, menu, domains = "example.com", "Edit domains", "Daily schedule"
+	const protected, menu, daily = "example.com is blocked", "Timed lock", "Daily schedule"
 	model := readyModel()
-	model.screen = domainList
-	model, _ = model.Update(reply{request: core.Request{Cmd: core.Status}, response: core.Response{OK: true, Active: true, Now: number1000, EndAt: number1060}})
+	model.screen = domainMenu
+	model, _ = model.Update(reply{request: core.Request{Cmd: core.Status}, response: core.Response{OK: true, Now: number1000, Entries: []core.EntryStatus{{Domain: "example.com", Active: true, EndAt: number1060}}}})
 	view := model.View()
-	if strings.Contains(view, protected) || strings.Contains(view, menu) || strings.Contains(view, domains) {
+	if model.screen != domainLocked || !strings.Contains(view, protected) || strings.Contains(view, menu) || strings.Contains(view, daily) {
 		t.Fatal(view)
 	}
 	model, action := model.Update(runeKey(textA))
-	if action != nil || !model.status.Active {
+	if action != nil || model.screen != domainLocked {
 		const (
 			textLockedKeyMustDoNothing = "locked key must do nothing"
 		)
@@ -204,7 +202,7 @@ func TestWindowsOverlapAndLastWindowConfirmation(t *testing.T) {
 
 	const zone = "UTC"
 	model := readyModel()
-	model.status.State.Lock = &core.Lock{Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: number1320, End: number360}}}
+	model.status.Entries[0] = core.EntryStatus{Domain: "example.com", Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: number1320, End: number360}}}
 	model.screen = windowList
 	model, action := model.Update(runeKey(textD))
 	if model.screen != lastWindow || action != nil {
@@ -264,8 +262,8 @@ func TestCountdownDomainValidationAndEmptyViews(t *testing.T) {
 
 		t.Fatal(textInvalidDomainSubmitted)
 	}
-	model.status.State.Domains = nil
-	model.screen = domainList
+	model.status.Entries = nil
+	model.screen = mainScreen
 	if !strings.Contains(model.View(), textChACDomain) {
 		t.Fatal(model.View())
 	}

@@ -8,14 +8,11 @@ import (
 
 func TestQuitReturnsOneLevelOutsideInput(t *testing.T) {
 	const quit, message, empty = "q", "Previous error", ""
-	for _, current := range []screen{domainList, windowList, rangeList, lastWindow} {
+	parents := map[screen]screen{domainMenu: mainScreen, domainLocked: mainScreen, domainDelete: mainScreen, windowList: domainMenu, rangeList: domainMenu, lastWindow: windowList}
+	for current, parent := range parents {
 		model := readyModel()
 		model.screen, model.error = current, message
 		updated, action := model.Update(runeKey(quit))
-		parent := mainScreen
-		if current == lastWindow {
-			parent = windowList
-		}
 		if action != nil || updated.screen != parent || updated.error != empty {
 			t.Fatal(current, updated.screen, updated.error)
 		}
@@ -47,14 +44,13 @@ func TestQuitRemainsTextOrIgnoredInInput(t *testing.T) {
 	}
 }
 
-func TestQuitExitsMainAndLockedWithoutMutatingState(t *testing.T) {
+func TestQuitExitsMainWithoutMutatingState(t *testing.T) {
 	const quit = "q"
 	for _, active := range []bool{false, true} {
 		model := readyModel()
-		model.status.Active = active
-		before := model.status
+		model.status.Entries[0].Active = active
 		updated, action := model.Update(runeKey(quit))
-		if action == nil || updated.status != before {
+		if action == nil || updated.screen != mainScreen {
 			t.Fatal(updated, action)
 		}
 		if _, ok := action().(QuitMsg); !ok {

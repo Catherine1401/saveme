@@ -11,7 +11,7 @@ func TestEditDailyWindowLoadsSelectionAndSubmitsReplacement(t *testing.T) {
 	const staleError, empty = "Previous action was refused.", ""
 	model := readyModel()
 	model.screen, model.selected, model.error = windowList, selected, staleError
-	model.status.State.Lock = &core.Lock{Kind: core.Daily, Windows: []core.Window{{Start: 10 * minutes, End: 11 * minutes}, {Start: start * minutes, End: end * minutes}}}
+	model.status.Entries[0] = core.EntryStatus{Domain: "example.com", Kind: core.Daily, Windows: []core.Window{{Start: 10 * minutes, End: 11 * minutes}, {Start: start * minutes, End: end * minutes}}}
 	model, _ = model.Update(runeKey(edit))
 	if model.error != empty || !model.editingWindow || model.screen != windowEdit || model.fields[0] != start || model.fields[2] != end {
 		t.Fatal(model)
@@ -23,7 +23,7 @@ func TestEditDailyWindowLoadsSelectionAndSubmitsReplacement(t *testing.T) {
 	}
 	action()
 	request := model.client.(*recordingClient).last
-	if request.Cmd != core.EditWindow || request.Index == nil || *request.Index != selected || request.Start != "16:00" || request.End != "17:00" {
+	if request.Cmd != core.EditWindow || request.Entry == nil || *request.Entry != 0 || request.Index == nil || *request.Index != selected || request.Start != "16:00" || request.End != "17:00" {
 		t.Fatal(request)
 	}
 }
@@ -32,7 +32,7 @@ func TestEditDailyWindowAllowsOwnRangeButRejectsOtherOverlap(t *testing.T) {
 	const minutes, edit, enter = 60, "e", "enter"
 	model := readyModel()
 	model.screen = windowList
-	model.status.State.Lock = &core.Lock{Kind: core.Daily, Windows: []core.Window{{Start: 14 * minutes, End: 15 * minutes}, {Start: 16 * minutes, End: 17 * minutes}}}
+	model.status.Entries[0] = core.EntryStatus{Domain: "example.com", Kind: core.Daily, Windows: []core.Window{{Start: 14 * minutes, End: 15 * minutes}, {Start: 16 * minutes, End: 17 * minutes}}}
 	model, _ = model.Update(runeKey(edit))
 	if _, action := model.Update(control(enter)); action == nil {
 		t.Fatal(model.error)

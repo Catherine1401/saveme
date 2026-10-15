@@ -92,8 +92,7 @@ func TestIsolatedDNSRedirectAndRepair(t *testing.T) {
 	const zero, forwardUID, udp, tcp = 0, 65534, "udp", "tcp"
 	isolated(t)
 	filter := &core.Filter{}
-	state := core.EmptyState()
-	state.Domains = []string{domain}
+	blocked := []string{domain}
 	startResolver(t, []string{v4, v6}, &localdns.Resolver{Blocker: filter, Upstreams: []string{proxy}})
 	enforcer := &Linux{ForwardUID: forwardUID, Filter: filter}
 	t.Cleanup(func() {
@@ -102,7 +101,7 @@ func TestIsolatedDNSRedirectAndRepair(t *testing.T) {
 		}
 	})
 	for _, remove := range []bool{false, true} {
-		if err := enforcer.Apply(state, true); err != nil {
+		if err := enforcer.Apply(blocked); err != nil {
 			t.Fatal(err)
 		}
 		for _, address := range []string{remote4, remote6} {
@@ -111,12 +110,12 @@ func TestIsolatedDNSRedirectAndRepair(t *testing.T) {
 			}
 		}
 		removeRules(t, remove)
-		if err := enforcer.Apply(state, true); err != nil {
+		if err := enforcer.Apply(blocked); err != nil {
 			t.Fatal(err)
 		}
 		query(t, remote4, udp, zero)
 	}
-	if err := enforcer.Apply(state, false); err != nil {
+	if err := enforcer.Apply(nil); err != nil {
 		t.Fatal(err)
 	}
 	connection := &nftables.Conn{}
@@ -190,7 +189,7 @@ func reachable(address, network string) bool {
 
 func TestIsolatedEncryptedDNSBlockingAndRelease(t *testing.T) {
 	const v4, v6, dot4, dot6, doh4, doh6, uid = "127.0.0.2", "::2", "127.0.0.2:853", "[::2]:853", "127.0.0.2:443", "[::2]:443", 65534
-	const udp, tcp = "udp", "tcp"
+	const udp, tcp, domain = "udp", "tcp", "example.com"
 	const resultFormat = "address=%s network=%s locked=%t reachable=%t"
 	isolated(t)
 	enforcer := &Linux{ForwardUID: uid, Filter: &core.Filter{}, DoH: []net.IP{net.ParseIP(v4), net.ParseIP(v6)}}
@@ -202,7 +201,11 @@ func TestIsolatedEncryptedDNSBlockingAndRelease(t *testing.T) {
 		}
 	}
 	for _, active := range []bool{false, true, false} {
-		if err := enforcer.Apply(core.EmptyState(), active); err != nil {
+		var blocked []string
+		if active {
+			blocked = []string{domain}
+		}
+		if err := enforcer.Apply(blocked); err != nil {
 			t.Fatal(err)
 		}
 		for _, address := range addresses {

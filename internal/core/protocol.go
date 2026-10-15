@@ -30,22 +30,30 @@ type Request struct {
 	Code      string        `json:"code,omitempty"`
 	Domain    string        `json:"domain,omitempty"`
 	Index     *int          `json:"index,omitempty"`
+	Entry     *int          `json:"entry,omitempty"`
 	Confirmed bool          `json:"confirmed,omitempty"`
 }
 
 type Response struct {
-	OK        bool      `json:"ok"`
-	Error     ErrorCode `json:"error,omitempty"`
-	Message   string    `json:"message,omitempty"`
-	Active    bool      `json:"active"`
-	Kind      Kind      `json:"kind,omitempty"`
-	Now       int64     `json:"now"`
-	EndAt     int64     `json:"end_at,omitempty"`
-	NextAt    int64     `json:"next_at,omitempty"`
-	State     *State    `json:"state,omitempty"`
-	Pending   bool      `json:"pending,omitempty"`
-	Code      string    `json:"code,omitempty"`
-	ExpiresIn int64     `json:"expires_in,omitempty"`
-	Failures  int       `json:"failures,omitempty"`
-	Preview   *State    `json:"preview,omitempty"`
+	OK        bool          `json:"ok"`
+	Error     ErrorCode     `json:"error,omitempty"`
+	Message   string        `json:"message,omitempty"`
+	Active    bool          `json:"active"`
+	Now       int64         `json:"now"`
+	Entries   []EntryStatus `json:"entries,omitempty"`
+	Pending   bool          `json:"pending,omitempty"`
+	Code      string        `json:"code,omitempty"`
+	ExpiresIn int64         `json:"expires_in,omitempty"`
+	Failures  int           `json:"failures,omitempty"`
+	Preview   *Entry        `json:"preview,omitempty"`
+}
+
+type EntryStatus struct {
+	Domain  string   `json:"domain"`
+	Active  bool     `json:"active"`
+	Kind    Kind     `json:"kind,omitempty"`
+	Zone    string   `json:"zone,omitempty"`
+	EndAt   int64    `json:"end_at,omitempty"`
+	NextAt  int64    `json:"next_at,omitempty"`
+	Windows []Window `json:"windows,omitempty"`
 }

@@ -5,17 +5,16 @@ import "sync"
 type Filter struct {
 	mu      sync.RWMutex
 	domains []string
-	active  bool
 }
 
-func (f *Filter) Set(state State, active bool) {
+func (f *Filter) Set(blocked []string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.domains, f.active = append([]string{}, state.Domains...), active
+	f.domains = append([]string{}, blocked...)
 }
 
 func (f *Filter) Blocked(name string) bool {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
-	return f.active && DomainBlocked(name, f.domains)
+	return DomainBlocked(name, f.domains)
 }

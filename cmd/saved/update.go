@@ -23,9 +23,11 @@ func checkUpdate(cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	if state.Lock != nil {
-		const locked = "remove the schedule or wait for the timed lock to expire before updating"
-		return errors.Join(core.ErrLocked, errors.New(locked))
+	for _, entry := range state.Entries {
+		if entry.Lock != nil {
+			const locked = "remove every schedule and wait for every timed lock to expire before updating"
+			return errors.Join(core.ErrLocked, errors.New(locked))
+		}
 	}
 	return nil
 }

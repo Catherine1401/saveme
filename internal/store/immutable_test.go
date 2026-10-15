@@ -24,7 +24,7 @@ func TestImmutableSaveAndReload(t *testing.T) {
 	})
 	state := core.EmptyState()
 	for _, domain := range []string{first, second} {
-		state.Domains = []string{domain}
+		state.Entries = []core.Entry{{Domain: domain}}
 		if err := repo.Save(state); err != nil {
 			t.Fatal(err)
 		}
@@ -40,7 +40,8 @@ func TestImmutableSaveAndReload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !core.DomainBlocked(domain, reloaded.Domains) {
+		const zero = 0
+		if len(reloaded.Entries) == zero || reloaded.Entries[zero].Domain != domain {
 			t.Fatal(reloaded)
 		}
 	}

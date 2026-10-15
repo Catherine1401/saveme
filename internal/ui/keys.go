@@ -17,14 +17,8 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 	if m.busy {
 		return m, nil
 	}
-	if !m.ready || !m.status.OK {
+	if !m.ready || !m.usable() {
 		if key.String() == shortQuit {
-			return m, Quit
-		}
-		return m, nil
-	}
-	if m.status.Active {
-		if key.String() == shortQuit || key.String() == escape {
 			return m, Quit
 		}
 		return m, nil
@@ -42,33 +36,39 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 	}
 	key = m.vimKey(key)
 	if key.String() == escape {
-		const (
-			number0 = 0
-		)
-
-		m.screen, m.selected = mainScreen, number0
+		m.screen, m.selected, m.error = mainScreen, m.entry, ""
 		return m, nil
 	}
 	switch m.screen {
 	case mainScreen:
-		return m.mainKey(key)
+		return m.domainListKey(key)
+	case domainMenu:
+		return m.menuKey(key)
 	case windowList:
 		return m.windowListKey(key)
 	case windowEdit:
 		return m.windowKey(key)
 	case rangeList:
 		return m.rangeKey(key)
-	case domainList:
-		return m.domainListKey(key)
 	case domainEdit:
 		return m.domainKey(key)
 	case lastWindow:
 		const enter = "enter"
 		if key.String() == enter {
-			return m.submit(core.Request{Cmd: core.DeleteWindow, Index: &m.selected, Confirmed: true})
+			return m.submit(core.Request{Cmd: core.DeleteWindow, Entry: &m.entry, Index: &m.selected, Confirmed: true})
+		}
+	case domainDelete:
+		const enter = "enter"
+		if key.String() == enter {
+			return m.submit(core.Request{Cmd: core.DeleteDomain, Index: &m.entry, Confirmed: true})
 		}
 	}
 	return m, nil
+}
+
+// Giao diện vẫn dùng được khi chỉ thiếu NTP: xem khóa và thêm domain.
+func (m Model) usable() bool {
+	return m.status.OK || m.status.Error == core.ErrClockUnsync
 }
 
 func (m Model) submit(request core.Request) (Model, Cmd) {
@@ -93,44 +93,6 @@ func move(key string, selected, count int) int {
 	return selected
 }
 
-func (m Model) mainKey(key KeyMsg) (Model, Cmd) {
-	const quit, enter, choices, zero, one = "q", "enter", 3, 0, 1
-	if key.String() == quit {
-		return m, Quit
-	}
-	m.selected = move(key.String(), m.selected, choices)
-	digit, err := strconv.Atoi(key.String())
-	choose := key.String() == enter
-	if err == nil && digit >= one && digit <= choices {
-		m.selected, choose = digit-one, true
-	}
-	if !choose {
-		return m, nil
-	}
-	switch m.selected {
-	case zero:
-		if m.status.State.Lock != nil {
-			m.screen = windowList
-		} else {
-			m.beginWindow()
-		}
-	case one:
-		if m.status.State.Lock != nil {
-			const (
-				removeScheduleFirst = "Delete the daily schedule before creating a timed lock."
-			)
-
-			m.error = removeScheduleFirst
-			return m, nil
-		}
-		m.screen = rangeList
-	default:
-		m.screen = domainList
-	}
-	m.selected = zero
-	return m, nil
-}
-
 func (m Model) rangeKey(key KeyMsg) (Model, Cmd) {
 	const enter, one = "enter", 1
 	durations := durationChoices()
@@ -141,7 +103,7 @@ func (m Model) rangeKey(key KeyMsg) (Model, Cmd) {
 		m.selected, choose = digit-one, true
 	}
 	if choose {
-		return m.submit(core.Request{Cmd: core.CreateRange, Duration: durations[m.selected].Value})
+		return m.submit(core.Request{Cmd: core.CreateRange, Entry: &m.entry, Duration: durations[m.selected].Value})
 	}
 	return m, nil
 }

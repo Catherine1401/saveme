@@ -32,11 +32,12 @@ func chains(target *nftables.Table) []*nftables.Chain {
 	}
 }
 
-func (l *Linux) Apply(state core.State, active bool) error {
+func (l *Linux) Apply(blocked []string) error {
+	const zero = 0
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.Filter.Set(state, active)
-	return l.ensure(active)
+	l.Filter.Set(blocked)
+	return l.ensure(len(blocked) > zero)
 }
 
 func (l *Linux) ensure(active bool) error {

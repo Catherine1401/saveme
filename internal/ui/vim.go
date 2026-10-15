@@ -28,7 +28,7 @@ func (m *Model) vimKey(key KeyMsg) KeyMsg {
 			return KeyMsg{Name: name, Type: KeyControl}
 		}
 		if text == right {
-			if m.screen == domainList || m.screen == windowList {
+			if m.screen == windowList {
 				return KeyMsg{Type: KeyRunes, Runes: []rune(editKey)}
 			}
 			return KeyMsg{Name: enterKey, Type: KeyControl}
@@ -50,18 +50,17 @@ func (m *Model) vimKey(key KeyMsg) KeyMsg {
 }
 
 func (m Model) listCount() int {
-	const mainChoices, zero = 3, 0
+	const menuChoices, zero = 2, 0
 	switch m.screen {
 	case mainScreen:
-		return mainChoices
+		return len(m.status.Entries)
+	case domainMenu:
+		return menuChoices
 	case rangeList:
 		return len(durationChoices())
-	case domainList:
-		return len(m.status.State.Domains)
 	case windowList:
-		if m.status.State.Lock != nil {
-			return len(m.status.State.Lock.Windows)
-		}
+		entry, _ := m.current()
+		return len(entry.Windows)
 	}
 	return zero
 }

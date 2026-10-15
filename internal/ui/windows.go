@@ -18,11 +18,12 @@ func (m *Model) beginWindow() {
 
 func (m Model) windowListKey(key KeyMsg) (Model, Cmd) {
 	const add, edit, remove, one = "a", "e", "d", 1
-	if m.status.State.Lock == nil {
-		m.screen = mainScreen
+	entry, ok := m.current()
+	if !ok || !scheduled(entry) {
+		m.screen = domainMenu
 		return m, nil
 	}
-	windows := m.status.State.Lock.Windows
+	windows := entry.Windows
 	m.selected = move(key.String(), m.selected, len(windows))
 	switch key.String() {
 	case add:
@@ -41,7 +42,7 @@ func (m Model) windowListKey(key KeyMsg) (Model, Cmd) {
 			m.screen = lastWindow
 			return m, nil
 		}
-		return m.submit(core.Request{Cmd: core.DeleteWindow, Index: &m.selected})
+		return m.submit(core.Request{Cmd: core.DeleteWindow, Entry: &m.entry, Index: &m.selected})
 	}
 	return m, nil
 }
@@ -106,8 +107,9 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 	current := m.currentWindow()
 	windows := append(append([]core.Window{}, m.windows...), current)
 	validation := append([]core.Window{}, windows...)
-	if m.status.State.Lock != nil {
-		for index, window := range m.status.State.Lock.Windows {
+	entry, _ := m.current()
+	if scheduled(entry) {
+		for index, window := range entry.Windows {
 			if !m.editingWindow || index != m.selected {
 				validation = append(validation, window)
 			}
@@ -117,13 +119,13 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 		m.error = string(err.(core.ErrorCode))
 		return m, nil
 	}
-	if m.status.State.Lock != nil {
+	if scheduled(entry) {
 		const (
 			confirmSingleWindow = "Press Enter to confirm the new window."
 		)
 
 		if save {
-			request := core.Request{Cmd: core.AddWindow, Start: formatMinute(current.Start), End: formatMinute(current.End)}
+			request := core.Request{Cmd: core.AddWindow, Entry: &m.entry, Start: formatMinute(current.Start), End: formatMinute(current.End)}
 			if m.editingWindow {
 				request.Cmd, request.Index = core.EditWindow, &m.selected
 			}
@@ -142,5 +144,5 @@ func (m Model) saveWindow(save bool) (Model, Cmd) {
 	for _, window := range windows {
 		inputs = append(inputs, core.InputWindow{Start: formatMinute(window.Start), End: formatMinute(window.End)})
 	}
-	return m.submit(core.Request{Cmd: core.CreateDaily, Windows: inputs})
+	return m.submit(core.Request{Cmd: core.CreateDaily, Entry: &m.entry, Windows: inputs})
 }

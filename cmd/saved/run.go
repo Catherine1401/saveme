@@ -21,7 +21,7 @@ import (
 
 type demoEnforcer struct{}
 
-func (demoEnforcer) Apply(core.State, bool) error { return nil }
+func (demoEnforcer) Apply([]string) error { return nil }
 
 func runDemo(ctx context.Context, cfg config.Config) error {
 	const mode, warning = 0700, "DEMO: no DNS or network blocking; socket %s"
