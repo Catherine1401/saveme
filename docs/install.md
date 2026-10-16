@@ -214,7 +214,9 @@ the lock. An Administrator can remove the rules or stop the service.
 
 Removal is refused while any domain has a stored lock or daily schedule,
 including when Linux updates are allowed. Wait for timed locks to expire and
-delete daily schedules first.
+delete daily schedules first. On Windows, a partial installation without a
+daemon that can read its configuration has no enforced lock, so uninstall
+removes it without that check.
 
 Linux, as your ordinary account:
 
