@@ -22,6 +22,31 @@ function Invoke-Daemon([string]$Daemon, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Daemon $($Arguments -join ' ') failed with exit code $LASTEXITCODE." }
 }
 
+# Thêm ($Add) hoặc gỡ thư mục cài khỏi Path của máy, giữ nguyên các biến %...% chưa mở rộng.
+function Set-ProgramPath([bool]$Add) {
+    $key = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment'
+    $name = 'Path'
+    $separator = ';'
+    $raw = (Get-Item $key).GetValue($name, '', 'DoNotExpandEnvironmentNames')
+    $entries = @($raw -split $separator | Where-Object { $_ -and $_.TrimEnd('\') -ne $ProgramDir })
+    if ($Add) { $entries += $ProgramDir }
+    Set-ItemProperty -Path $key -Name $name -Value ($entries -join $separator) -Type ExpandString
+    Send-EnvironmentChange
+}
+
+# Báo các cửa sổ đang mở rằng biến môi trường đã đổi để terminal mới nhận Path mới.
+function Send-EnvironmentChange {
+    $broadcast = [IntPtr]0xffff
+    $settingChange = 0x1A
+    $abortIfHung = 2
+    $timeoutMs = 5000
+    if (-not ('SaveMe.Native' -as [type])) {
+        Add-Type -Namespace SaveMe -Name Native -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);'
+    }
+    $result = [UIntPtr]::Zero
+    [SaveMe.Native]::SendMessageTimeout($broadcast, $settingChange, [UIntPtr]::Zero, 'Environment', $abortIfHung, $timeoutMs, [ref]$result) | Out-Null
+}
+
 # Gỡ rule chặn, NRPT, chính sách DoH và file của saveme; dùng cho uninstall và rollback khi cài hỏng.
 function Remove-Installation {
     $group = 'saveme'
@@ -32,6 +57,7 @@ function Remove-Installation {
         Remove-ItemProperty -Path $key -Name 'DnsOverHttpsMode' -ErrorAction SilentlyContinue
     }
     Remove-Item -Path 'HKLM:\SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS' -Recurse -ErrorAction SilentlyContinue
+    Set-ProgramPath $false
     foreach ($path in @($ProgramDir, $DataDir)) {
         if (Test-Path $path) {
             Get-ChildItem -Path $path -Recurse -File | ForEach-Object { $_.IsReadOnly = $false }

@@ -21,6 +21,7 @@ try {
     New-Item -ItemType Directory -Path $ProgramDir, $StateDir | Out-Null
     foreach ($binary in $Binaries) { Copy-Item (Join-Path $base "bin\$binary") $ProgramDir }
     if (Test-Path (Join-Path $base 'VERSION')) { Copy-Item (Join-Path $base 'VERSION') $ProgramDir }
+    Set-ProgramPath $true
     $config = Get-Content -Raw (Join-Path $PSScriptRoot 'config.json') | ConvertFrom-Json
     $config.allowed_sid = $sid
     $config.state_dir = $StateDir
