@@ -22,6 +22,16 @@ function Invoke-Daemon([string]$Daemon, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Daemon $($Arguments -join ' ') failed with exit code $LASTEXITCODE." }
 }
 
+# Bật Windows Time tự khởi động và đồng bộ ngay; máy không vào domain thì dịch vụ này không tự chạy.
+function Enable-TimeSync {
+    $timeService = 'w32time'
+    $warning = 'Windows Time has not synchronized yet; locks stay on and only adding domains works until it does.'
+    Set-Service -Name $timeService -StartupType Automatic -ErrorAction SilentlyContinue
+    Start-Service -Name $timeService -ErrorAction SilentlyContinue
+    & w32tm.exe /resync /force | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Warning $warning }
+}
+
 # Thêm ($Add) hoặc gỡ thư mục cài khỏi Path của máy, giữ nguyên các biến %...% chưa mở rộng.
 function Set-ProgramPath([bool]$Add) {
     $key = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment'

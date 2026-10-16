@@ -9,6 +9,7 @@ if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) -or -not
 }
 $newDaemon = Join-Path $base 'bin\saved.exe'
 Invoke-Daemon $newDaemon @('-check-update', '-config', $ConfigPath)
+Enable-TimeSync
 $backup = Join-Path $env:TEMP ('saveme-update-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path (Join-Path $backup 'state') | Out-Null
 $stopped = $false

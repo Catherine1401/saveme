@@ -166,7 +166,9 @@ Windows support is experimental and has not been verified on a real Windows
 installation yet. Requirements: Windows 10/11 or Server with PowerShell 5.1,
 an Administrator account to install, an ordinary account to manage locks, the
 Windows Time service synchronized with a network source, and free
-`127.0.0.1:53` and `[::1]:53`.
+`127.0.0.1:53` and `[::1]:53`. Install and update set Windows Time to start
+automatically and request a sync, because computers outside a domain may never
+start it on their own; uninstall leaves it running.
 
 From a normal PowerShell, the bootstrap script asks for administrator rights
 through UAC, downloads the bundle for your architecture, verifies it against

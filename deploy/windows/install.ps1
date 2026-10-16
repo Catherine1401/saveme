@@ -46,6 +46,7 @@ try {
     New-ItemProperty -Path $firefox -Name 'Enabled' -Value 0 -PropertyType DWord -Force | Out-Null
     New-ItemProperty -Path $firefox -Name 'Locked' -Value 1 -PropertyType DWord -Force | Out-Null
 
+    Enable-TimeSync
     Start-Service -Name $ServiceName
     Wait-Ready
     $committed = $true
