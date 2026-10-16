@@ -22,6 +22,24 @@ function Invoke-Daemon([string]$Daemon, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Daemon $($Arguments -join ' ') failed with exit code $LASTEXITCODE." }
 }
 
+# Gỡ rule chặn, NRPT, chính sách DoH và file của saveme; dùng cho uninstall và rollback khi cài hỏng.
+function Remove-Installation {
+    $group = 'saveme'
+    Get-NetFirewallRule -Group $group -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+    Get-DnsClientNrptRule | Where-Object Comment -eq $group | ForEach-Object { Remove-DnsClientNrptRule -Name $_.Name -Force }
+    Clear-DnsClientCache
+    foreach ($key in @('HKLM:\SOFTWARE\Policies\Google\Chrome', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge', 'HKLM:\SOFTWARE\Policies\Chromium')) {
+        Remove-ItemProperty -Path $key -Name 'DnsOverHttpsMode' -ErrorAction SilentlyContinue
+    }
+    Remove-Item -Path 'HKLM:\SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS' -Recurse -ErrorAction SilentlyContinue
+    foreach ($path in @($ProgramDir, $DataDir)) {
+        if (Test-Path $path) {
+            Get-ChildItem -Path $path -Recurse -File | ForEach-Object { $_.IsReadOnly = $false }
+            Remove-Item -Path $path -Recurse -Force
+        }
+    }
+}
+
 # Chờ service ở trạng thái Running ổn định trong khoảng thời gian cho trước.
 function Wait-Ready([int]$Attempts = 10) {
     for ($attempt = 0; $attempt -lt $Attempts; $attempt++) {

@@ -193,7 +193,8 @@ The installer copies binaries to `%ProgramFiles%\saveme`, writes
 directory to SYSTEM, Administrators and read access for the account, registers
 the automatic `saved` service and disables DNS-over-HTTPS in Chrome, Edge,
 Chromium and Firefox through registry policies. It refuses an existing
-installation. Run `"%ProgramFiles%\saveme\saveme.exe"` as the selected account.
+installation. If a later step fails, it removes the service, files, rules and
+policies it created, so you can run it again. Run `"%ProgramFiles%\saveme\saveme.exe"` as the selected account.
 
 To update, extract the new bundle and run `deploy\windows\update.ps1` from an
 elevated PowerShell. It refuses while any domain has a stored lock
