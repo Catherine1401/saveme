@@ -106,7 +106,7 @@ func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
 }
 
 func (e *Engine) status(now time.Time) core.Response {
-	const zero, unsynchronized = 0, "Clock not synchronized with NTP by systemd."
+	const zero, unsynchronized = 0, "Clock not synchronized with NTP."
 	response := core.Response{OK: true, Now: now.Unix()}
 	if !e.clock.Trusted() {
 		response.OK, response.Error, response.Message = false, core.ErrClockUnsync, unsynchronized
