@@ -20,7 +20,7 @@ func (m *Model) vimKey(key KeyMsg) KeyMsg {
 	case up:
 		return KeyMsg{Name: upKey, Type: KeyControl}
 	case left, right:
-		if m.screen == windowEdit {
+		if m.screen == windowEdit || m.screen == durationEdit {
 			name := leftKey
 			if text == right {
 				name = rightKey
@@ -57,7 +57,8 @@ func (m Model) listCount() int {
 	case domainMenu:
 		return menuChoices
 	case rangeList:
-		return len(durationChoices())
+		const custom = 1
+		return len(durationChoices()) + custom
 	case settingsScreen:
 		return settingCount
 	case pickerScreen:

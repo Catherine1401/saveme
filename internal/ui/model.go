@@ -29,6 +29,7 @@ const (
 	settingsScreen
 	pickerScreen
 	presetList
+	durationEdit
 )
 
 type Model struct {
@@ -49,6 +50,7 @@ type Model struct {
 	field          int
 	digits         string
 	editingWindow  bool
+	duration       durationInput
 	editingDomain  bool
 	domainText     string
 	pending        core.Response

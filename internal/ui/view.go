@@ -80,7 +80,11 @@ func (m Model) screenView() string {
 		for index, choice := range durationChoices() {
 			body += m.row(index, choice.Label)
 		}
+		const customLabel = "Custom time"
+		body += m.row(len(durationChoices()), customLabel)
 		return body + m.keys(keyHint{key: digitKey, label: digitLabel}, keyHint{key: enterKey, label: enterLabel}, moveHint(), backHint())
+	case durationEdit:
+		return m.durationView()
 	case windowList:
 		return m.windowListView()
 	case windowEdit:

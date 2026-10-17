@@ -4,6 +4,8 @@ func (m Model) back() (Model, Cmd) {
 	const zero, empty = 0, ""
 	m.error, m.vim.prefix = empty, false
 	switch m.screen {
+	case durationEdit:
+		m.screen, m.selected = rangeList, len(durationChoices())
 	case mainScreen:
 		return m, Quit
 	case lastWindow:

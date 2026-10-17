@@ -56,7 +56,7 @@ func (m Model) selectedEntry() (int, bool) {
 
 // Đang gõ chữ: phím q/h là ký tự, không phải lệnh điều hướng.
 func (m Model) typing() bool {
-	return m.searching || m.screen == domainEdit || m.screen == windowEdit || m.screen == confirmation
+	return m.searching || m.screen == domainEdit || m.screen == windowEdit || m.screen == durationEdit || m.screen == confirmation
 }
 
 // Gõ chuỗi tìm kiếm; Enter giữ bộ lọc, Esc xóa bộ lọc.

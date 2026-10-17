@@ -175,7 +175,15 @@ domains works.
 
 Opening a locked domain shows its countdown; `q` returns to the list and the
 daemon keeps enforcing the lock. Other domains remain editable. Timed choices
-are 1, 2, 4, 6 or 12 hours, or 1, 3, 7, 14 or 30 days.
+are 1, 2, 4, 6 or 12 hours, or 1, 3, 7, 14 or 30 days. Select the final
+**Custom time** option with arrow keys or `G`, then press Enter to enter hours
+and minutes. It starts at `01:00` and accepts `00:01` through `24:00` inclusive.
+Type two digits per field; left/right or `h/l` switches fields, and up/down or
+`k/j` adjusts them. `00:00` and values above `24:00` are refused on Enter.
+Press Enter to review and confirm using the usual code. Esc returns to the
+duration list; canceling confirmation returns to the entered custom time.
+Custom time also applies to marked domains. Both client and daemon need the
+updated version; older daemons reject custom durations.
 
 ## Limits
 

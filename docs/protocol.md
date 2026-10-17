@@ -14,9 +14,15 @@ Use one connection for a pending operation and its confirmation. There is one pe
 | `add_window` | `entry`, `start`, `end` | Prepare a new daily window for one domain |
 | `edit_window` | `entry`, `index`, `start`, `end` | Prepare a replacement daily window; confirmation required |
 | `delete_window` | `entry`, `index`, optional `confirmed` | Delete a window; the last requires `confirmed: true` and removes the schedule |
-| `create_range` | `entry`, optional `targets`, `duration` | Prepare one of ten choices for one domain or each listed domain: 1h, 2h, 4h, 6h, 12h, 1d, 3d, 7d, 14d, 30d |
+| `create_range` | `entry`, optional `targets`, `duration` | Prepare a preset (1h, 2h, 4h, 6h, 12h, 1d, 3d, 7d, 14d, 30d) or custom whole minutes (1m–1440m) for one domain or each listed domain |
 | `confirm` | `code` | Recheck the target domain, persist and enforce the prepared lock |
 | `cancel` | none | Cancel the connection's pending request |
+
+Custom durations use decimal digits followed by `m`, from `1m` to `1440m`
+(inclusive); signs, spaces, fractions and mixed units are rejected. The daemon
+validates this limit before preparing confirmation. The 24-hour limit applies
+only to custom durations; longer presets remain available. Both client and
+daemon must support custom durations; older daemons reject minute values.
 
 Window times use exactly `HH:MM`. Indexes are zero-based and must be present for indexed commands. `index` selects a domain for domain commands and a window for window commands; `entry` selects the domain for schedule commands. Each domain has at most one lock, daily or timed; locks are independent. A command whose target domain is active receives `ERR_LOCKED`; for `confirm`, the target is the pending request's domain. Commands on other domains, `add_domain` and `cancel` are not blocked by another domain's lock. An untrusted clock keeps every stored lock active and returns `ERR_CLOCK_UNSYNC` for every mutation except `add_domain`; a successful `add_domain` then returns the new status with `ok: false` and `ERR_CLOCK_UNSYNC`. Creating a lock for a domain that already has one returns `ERR_HAS_LOCK`.
 

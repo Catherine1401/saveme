@@ -74,7 +74,7 @@ func Duration(value string) (time.Duration, error) {
 	const hourOne, hourTwo, hourFour, hourSix = "1h", "2h", "4h", "6h"
 	const twoHours, fourHours, sixHours = 2, 4, 6
 	const halfDay, one, three, seven, fourteen, thirty = "12h", "1d", "3d", "7d", "14d", "30d"
-	const halfHours, threeDays, sevenDays, fortnightDays, monthDays, zero = 12, 3, 7, 14, 30, 0
+	const halfHours, threeDays, sevenDays, fortnightDays, monthDays = 12, 3, 7, 14, 30
 	switch value {
 	case hourOne:
 		return time.Hour, nil
@@ -97,6 +97,25 @@ func Duration(value string) (time.Duration, error) {
 	case thirty:
 		return monthDays * day, nil
 	default:
+		return minuteDuration(value)
+	}
+}
+
+func minuteDuration(value string) (time.Duration, error) {
+	const suffix, zero, minimum, maximum = "m", 0, 1, 1440
+	text := strings.TrimSuffix(value, suffix)
+	if text == value || len(text) == zero {
 		return zero, ErrInvalid
 	}
+	for _, char := range text {
+		const low, high = '0', '9'
+		if char < low || char > high {
+			return zero, ErrInvalid
+		}
+	}
+	minutes, err := strconv.Atoi(text)
+	if err != nil || minutes < minimum || minutes > maximum {
+		return zero, ErrInvalid
+	}
+	return time.Duration(minutes) * time.Minute, nil
 }

@@ -39,6 +39,9 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 	}
 	key = m.vimKey(key)
 	if key.String() == escape {
+		if m.screen == durationEdit {
+			return m.back()
+		}
 		if m.screen == mainScreen {
 			m.marked = nil
 		}
@@ -60,6 +63,8 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		return m.windowKey(key)
 	case rangeList:
 		return m.rangeKey(key)
+	case durationEdit:
+		return m.durationKey(key)
 	case domainEdit:
 		return m.domainKey(key)
 	case lastWindow:
@@ -114,7 +119,7 @@ func move(key string, selected, count int) int {
 func (m Model) rangeKey(key KeyMsg) (Model, Cmd) {
 	const enter, one, zero, tenth = "enter", 1, 0, 10
 	durations := durationChoices()
-	m.selected = move(key.String(), m.selected, len(durations))
+	m.selected = move(key.String(), m.selected, len(durations)+one)
 	digit, err := strconv.Atoi(key.String())
 	choose := key.String() == enter
 	if err == nil && digit == zero && len(durations) >= tenth {
@@ -124,6 +129,9 @@ func (m Model) rangeKey(key KeyMsg) (Model, Cmd) {
 		m.selected, choose = digit-one, true
 	}
 	if choose {
+		if m.selected == len(durations) {
+			return m.beginDuration(), nil
+		}
 		return m.submit(core.Request{Cmd: core.CreateRange, Entry: &m.entry, Targets: m.targets(), Duration: durations[m.selected].Value})
 	}
 	return m, nil
