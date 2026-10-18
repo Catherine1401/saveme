@@ -11,6 +11,7 @@ type Settings struct {
 	Theme, Clock string
 	Effects      []string
 	Warning      bool
+	AutoUpdates  bool
 }
 
 // Thứ tự các mục trên màn Settings.
@@ -19,6 +20,7 @@ const (
 	clockSetting
 	effectSetting
 	warningSetting
+	autoUpdateSetting
 	settingCount
 )
 
@@ -42,7 +44,7 @@ func (m Model) Configure(settings Settings, save func(Settings) error) Model {
 			}
 		}
 	}
-	m.settings = Settings{Theme: theme.name, Clock: clock.name, Effects: effects, Warning: settings.Warning}
+	m.settings = Settings{Theme: theme.name, Clock: clock.name, Effects: effects, Warning: settings.Warning, AutoUpdates: settings.AutoUpdates}
 	m.saveSettings = save
 	return m.applySettings(m.settings)
 }
@@ -127,6 +129,11 @@ func (m Model) settingsKey(key KeyMsg) (Model, Cmd) {
 	m.selected = move(key.String(), m.selected, settingCount)
 	if key.String() != enter && key.String() != space {
 		return m, nil
+	}
+	if m.selected == autoUpdateSetting {
+		next := m.settings
+		next.AutoUpdates = !next.AutoUpdates
+		return m.commitSettings(next), nil
 	}
 	if m.selected == warningSetting {
 		next := m.settings
@@ -231,18 +238,23 @@ func labelOf(options []option, name string) string {
 
 func (m Model) settingsView() string {
 	const title, rowFormat, on, off = " Settings\n\n", "%-22s %s", "On", "Off"
-	const themeLabel, clockLabel, effectLabel, warningLabel = "Theme", "Clock style", "Clock effect", "Final-minute warning"
+	const themeLabel, clockLabel, effectLabel, warningLabel, updateLabel = "Theme", "Clock style", "Clock effect", "Final-minute warning", "Auto updates"
 	const enterKey, enterLabel = "↵", "change"
 	saved := m.settings
 	warning := off
 	if saved.Warning {
 		warning = on
 	}
+	automatic := off
+	if saved.AutoUpdates {
+		automatic = on
+	}
 	rows := []struct{ label, value string }{
 		{themeLabel, labelOf(m.withPicking(themeSetting).pickerOptions(), saved.Theme)},
 		{clockLabel, labelOf(m.withPicking(clockSetting).pickerOptions(), saved.Clock)},
 		{effectLabel, effectsLabel(saved.Effects)},
 		{warningLabel, warning},
+		{updateLabel, automatic},
 	}
 	body := title
 	for index, row := range rows {

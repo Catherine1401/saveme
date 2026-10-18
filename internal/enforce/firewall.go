@@ -57,6 +57,13 @@ func (f *Firewall) ensure(want bool) error {
 		f.known, f.active, f.checked = true, false, time.Now()
 		return nil
 	}
+	if !f.known {
+		const verified = "SAVEME_VERIFIED"
+		if output, err := f.Run(auditScript(true, Complement(f.Upstreams), f.DoH)); err == nil && strings.TrimSpace(output) == verified {
+			f.known, f.active, f.checked = true, true, time.Now()
+			return nil
+		}
+	}
 	if f.known && f.active {
 		if output, err := f.Run(checkScript()); err == nil && strings.TrimSpace(output) == expected {
 			f.checked = time.Now()

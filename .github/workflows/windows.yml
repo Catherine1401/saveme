@@ -19,6 +19,6 @@ jobs:
       - name: Vet and build
         run: |
           go vet ./...
-          go build ./cmd/saved ./cmd/saveme
+          go build ./cmd/saved ./cmd/saveme ./cmd/saveme-update
       - name: Test portable packages
-        run: go test ./internal/config ./internal/core ./internal/domain ./internal/daemon ./internal/store ./internal/dns ./internal/enforce ./internal/ui
+        run: go test ./cmd/saved ./cmd/saveme-update ./internal/update ./internal/config ./internal/core ./internal/domain ./internal/daemon ./internal/store ./internal/dns ./internal/enforce ./internal/ui

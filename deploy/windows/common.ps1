@@ -59,6 +59,11 @@ function Send-EnvironmentChange {
 
 # Gỡ rule chặn, NRPT, chính sách DoH và file của saveme; dùng cho uninstall và rollback khi cài hỏng.
 function Remove-Installation {
+    $helperName = 'saveme-updater'
+    if (Get-Service -Name $helperName -ErrorAction SilentlyContinue) {
+        Stop-Service -Name $helperName -ErrorAction SilentlyContinue
+        & sc.exe delete $helperName | Out-Null
+    }
     $group = 'saveme'
     Get-NetFirewallRule -Group $group -ErrorAction SilentlyContinue | Remove-NetFirewallRule
     Get-DnsClientNrptRule | Where-Object Comment -eq $group | ForEach-Object { Remove-DnsClientNrptRule -Name $_.Name -Force }

@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"net"
-	"net/netip"
 
 	"saveme/internal/config"
 	"saveme/internal/core"
@@ -23,22 +21,16 @@ func runProtected(ctx context.Context, cfg config.Config) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	filter := &core.Filter{}
-	enforcer := &enforce.Firewall{Filter: filter, DoH: cfg.DoH, Run: enforce.PowerShell}
-	for _, upstream := range cfg.Upstreams {
-		host, _, err := net.SplitHostPort(upstream)
-		if err != nil {
-			return err
-		}
-		address, err := netip.ParseAddr(host)
-		if err != nil {
-			return err
-		}
-		enforcer.Upstreams = append(enforcer.Upstreams, address)
+	enforcer, err := enforce.ConfiguredFirewall(cfg.Upstreams, cfg.DoH, enforce.PowerShell)
+	if err != nil {
+		return err
 	}
+	enforcer.Filter = filter
 	engine, err := protectedEngine(cfg, enforcer, enforcer.Clear)
 	if err != nil {
 		return err
 	}
+	engine.UpdatePending = updatePending
 	resolver := &dns.Resolver{Blocker: filter, Upstreams: cfg.Upstreams}
 	service, err := dns.Listen([]string{v4, v6}, resolver)
 	if err != nil {

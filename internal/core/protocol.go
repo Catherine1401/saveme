@@ -36,6 +36,7 @@ type Request struct {
 }
 
 type Response struct {
+	Clients   int           `json:"clients,omitempty"`
 	OK        bool          `json:"ok"`
 	Error     ErrorCode     `json:"error,omitempty"`
 	Message   string        `json:"message,omitempty"`

@@ -25,6 +25,7 @@ type Pending struct {
 }
 
 type Engine struct {
+	ClientCount   func() int
 	UpdatePending func() bool
 	mu            sync.Mutex
 	state         core.State
@@ -108,6 +109,9 @@ func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
 func (e *Engine) status(now time.Time) core.Response {
 	const zero, unsynchronized = 0, "Clock not synchronized with NTP."
 	response := core.Response{OK: true, Now: now.Unix()}
+	if e.ClientCount != nil {
+		response.Clients = e.ClientCount()
+	}
 	if !e.clock.Trusted() {
 		response.OK, response.Error, response.Message = false, core.ErrClockUnsync, unsynchronized
 	}

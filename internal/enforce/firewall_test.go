@@ -57,7 +57,7 @@ func TestFirewallAppliesClearsAndSkipsRepeats(t *testing.T) {
 
 func TestFirewallRepairsMissingRules(t *testing.T) {
 	const domain, create = "example.com", "New-NetFirewallRule"
-	const missing, healthy, third, three, four = "5 1", "6 1", 2, 3, 4
+	const missing, healthy, third, three, four = "5 1", "6 1", 3, 4, 5
 	shell := &fakeShell{check: missing}
 	firewall := newFirewall(shell)
 	if err := firewall.Apply([]string{domain}); err != nil {
@@ -84,5 +84,14 @@ func TestFirewallFailureRetriesNextApply(t *testing.T) {
 	shell.fail = false
 	if err := firewall.Apply([]string{domain}); err != nil || !firewall.active {
 		t.Fatal(err)
+	}
+}
+
+func TestFirewallPreservesVerifiedRulesOnStartup(t *testing.T) {
+	const verified, domain, one, zero, create = "SAVEME_VERIFIED", "example.com", 1, 0, "New-NetFirewallRule"
+	shell := &fakeShell{check: verified}
+	firewall := newFirewall(shell)
+	if err := firewall.Apply([]string{domain}); err != nil || !firewall.active || len(shell.scripts) != one || strings.Contains(shell.scripts[zero], create) {
+		t.Fatal(err, shell.scripts)
 	}
 }

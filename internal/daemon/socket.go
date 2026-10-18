@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"saveme/internal/core"
@@ -18,6 +19,10 @@ func (s *Server) Serve(ctx context.Context) error {
 	var group sync.WaitGroup
 	defer group.Wait()
 	go func() { <-ctx.Done(); s.listener.Close() }()
+	var active atomic.Int64
+	s.Engine.mu.Lock()
+	s.Engine.ClientCount = func() int { return int(active.Load()) }
+	s.Engine.mu.Unlock()
 	var owner uint64
 	slots := make(chan struct{}, maxConnections)
 	for {
@@ -38,9 +43,11 @@ func (s *Server) Serve(ctx context.Context) error {
 			continue
 		}
 		owner++
+		active.Add(one)
 		group.Add(one)
 		go func(id uint64) {
 			defer group.Done()
+			defer active.Add(-one)
 			defer func() { <-slots }()
 			s.serveConn(ctx, conn, id)
 		}(owner)

@@ -73,6 +73,44 @@ also apply outside lock periods; restart the browser and check its policy page.
 
 ## Update
 
+### Automatic updates in the source implementation
+
+Versioned bundles built from the current source include the `saveme-updater`
+system service. Install or upgrade once with administrator privileges to set up
+the helper; the ordinary account can then open `saveme` without elevation.
+Published older bundles do not acquire this feature by downloading a newer
+bootstrap script alone.
+
+Opening the installed launcher checks for a newer stable GitHub release in the
+background, verifies its checksum, version and archive contents, and stages it
+in the protected runtime directory. A prepared update is applied on a later
+launch, after all other saveme sessions close. Restarting the helper does not
+release the session locks held by open launchers. Help, status, demo mode,
+custom socket arguments and direct source builds do not initiate automatic
+updates.
+
+Settings → Auto updates disables automatic checking and application. Use
+`saveme update --status` to inspect the installed version, download phase,
+prepared version, deferral or last error. `saveme update` explicitly checks and
+applies a prepared update, including when automatic updates are disabled;
+other open sessions still defer application. A failed release is not retried
+automatically until a different release is available or an explicit update is
+requested. An unavailable network leaves the installed version usable.
+
+Both Linux and Windows transactions preserve stored timed locks and daily
+schedules. They verify commitments, the clock floor and enforcement after
+restart, and restore the previous version and commitment on failure. Untrusted
+NTP keeps stored locks active. Recovery files are retained when recovery fails;
+inspect the helper log and restart the helper after resolving the reported
+problem. Do not delete the transaction directory or saved state.
+
+Linux helper logs are available with
+`journalctl -u saveme-updater.service --no-pager`. Windows helper logs are in
+`C:\ProgramData\saveme\updater.log`. Unversioned source installs use the direct
+binaries and do not enable automatic updates.
+
+### Explicit installer updates
+
 Download the current installer again, then request an update:
 
 ```sh
@@ -157,13 +195,14 @@ To update binaries you already built and checked, run
 The source Linux updater verifies each domain's commitment after restart and
 rolls back on verification failure. It requires version 2 state and refuses
 legacy version 1 state before stopping the service; rollback to a version 1
-daemon is not supported by this snapshot path. Windows updates and uninstall
-retain the stored-lock refusal guard.
+daemon is not supported by this snapshot path. Uninstall retains the
+stored-lock refusal guard. Windows versioned bundles from current source use
+the preserving transaction described above; older bundles retain their own
+update guards.
 
 ## Windows
 
-Windows support is experimental and has not been verified on a real Windows
-installation yet. Requirements: Windows 10/11 or Server with PowerShell 5.1,
+Windows support is experimental. Requirements: Windows 10/11 or Server with PowerShell 5.1,
 an Administrator account to install, an ordinary account to manage locks, the
 Windows Time service synchronized with a network source, and free
 `127.0.0.1:53` and `[::1]:53`. Install and update set Windows Time to start
@@ -200,8 +239,10 @@ terminals can run `saveme`; uninstall removes it. If a later step fails, it remo
 policies it created, so you can run it again. Run `"%ProgramFiles%\saveme\saveme.exe"` as the selected account.
 
 To update, extract the new bundle and run `deploy\windows\update.ps1` from an
-elevated PowerShell. It refuses while any domain has a stored lock
-and restores the previous binaries and state if the new service does not start.
+elevated PowerShell. Current versioned bundles preserve stored locks through
+the helper transaction; older or unversioned update paths refuse stored locks.
+The preserving transaction restores the previous binaries and commitment if
+startup or verification fails.
 Service logs are written to `C:\ProgramData\saveme\saved.log`.
 
 While a domain is locked, the service adds a Name Resolution Policy Table rule
@@ -262,5 +303,5 @@ canonical `vX.Y.Z` tags, publication, downloaded-asset verification, and handoff
 Package only the verified committed SHA from a clean checkout. A local build or
 successful bootstrap fixture does not prove that GitHub published the release.
 
-Use a new canonical tag for each release. Distribution packages and automatic
-self-updates remain separate work; do not advertise channels before they exist.
+Use a new canonical tag for each release. Local automatic-update fixtures are
+not published releases or evidence of runtime support on every architecture.

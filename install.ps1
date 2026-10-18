@@ -23,8 +23,8 @@ Usage: install.ps1 [-User ACCOUNT] [-Version vX.Y.Z] [-Update | -Uninstall]
 Downloads a verified Windows bundle and runs its installer. Run from a normal
 PowerShell; it asks for administrator rights through UAC. -User selects the
 ordinary account that manages locks and defaults to the current account. -Update keeps
-configuration, state and policies; -Uninstall removes saveme. Both require no
-stored lock. Offline bundles
+configuration, state and policies and verifies stored commitments after restart.
+-Uninstall removes saveme and requires no stored lock. Offline bundles
 require -Archive, -Checksums and -Version.
 '@
 

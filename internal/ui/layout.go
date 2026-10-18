@@ -61,6 +61,7 @@ func (m Model) messages() string {
 	text := empty
 	if m.ready && m.usable() && m.screen != domainLocked {
 		text += m.clockWarning()
+		text += m.updateMessage()
 	}
 	if m.error != empty {
 		text += m.ink(fmt.Sprintf(errorFormat, m.error), toneError, true)

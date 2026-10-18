@@ -13,8 +13,8 @@ help() {
 
 Downloads a verified Linux binary bundle. Run as an ordinary user; sudo is
 used only for deployment. --update keeps configuration, state and policies;
---uninstall removes saveme. Both require no stored lock or daily schedule.
-Updates require no stored lock or daily schedule. Offline bundles require
+--uninstall removes saveme and requires no stored lock or daily schedule.
+Versioned updates verify commitments and enforcement before committing. Offline bundles require
 both --archive and --checksums. No shell profile is modified.'
   local readonly format='%s\n'
   printf "$format" "$text"
@@ -60,6 +60,7 @@ verify() {
 
 extract() {
   local readonly archive="$1" destination="$2"
+  local readonly helper=bin/saveme-update invalid_file="Invalid bundle file: %s"
   local readonly members=(bin/saveme bin/saved deploy/install.sh deploy/update.sh deploy/uninstall.sh
     deploy/check.sh deploy/config.json deploy/saved.service deploy/chrome.json
     deploy/firefox.json LICENSE VERSION)
@@ -67,8 +68,16 @@ extract() {
   tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$destination" -- "${members[@]}"
   local member
   for member in "${members[@]}"; do
-    [[ -f "$destination/$member" && ! -L "$destination/$member" ]] || fail "Invalid bundle file: $member"
+    [[ -f "$destination/$member" && ! -L "$destination/$member" ]] || fail "$(printf "$invalid_file" "$member")"
   done
+  if tar -tzf "$archive" -- "$helper" >/dev/null 2>&1; then
+    local readonly extras=(bin/saveme-update deploy/auto.sh deploy/saveme-updater.service)
+    tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$destination" -- "${extras[@]}"
+    for member in "${extras[@]}"; do
+      [[ -f "$destination/$member" && ! -L "$destination/$member" ]] || fail "$(printf "$invalid_file" "$member")"
+    done
+    chmod +x "$destination/$helper"
+  fi
   chmod +x "$destination/bin/saveme" "$destination/bin/saved"
 }
 

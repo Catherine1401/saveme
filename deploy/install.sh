@@ -32,6 +32,8 @@ readonly ready_message='Installed. Check systemctl status saved and browser poli
 readonly denied_message='Run with sudo and select a non-root account.'
 readonly existing_message='Target files or saveme-dns account exist; refusing to overwrite.'
 readonly share_dir=/usr/local/share/saveme
+readonly helper_path="$base_dir/bin/saveme-update" helper_root=/usr/local/libexec/saveme
+readonly helper_service=/etc/systemd/system/saveme-updater.service auto_script="$base_dir/deploy/auto.sh"
 
 source "$base_dir/deploy/check.sh"
 
@@ -40,7 +42,7 @@ if [[ "$EUID" -ne "$root_uid" || "$owner_uid" -eq "$root_uid" ]]; then
   exit "$failure_status"
 fi
 
-for binary in "$base_dir/bin/saveme" "$base_dir/bin/saved"; do
+for binary in "$base_dir/bin/saveme" "$base_dir/bin/saved" "$helper_path"; do
   test -x "$binary"
 done
 
@@ -48,7 +50,7 @@ for tool in systemctl timedatectl chattr install useradd sed; do
   command -v "$tool" >/dev/null
 done
 
-for target in "$service_path" "$config_dir/$config_name" "$firefox_path" "$chrome_dir/$policy_name" "$chromium_dir/$policy_name" "$cli_dir/saveme" "$daemon_dir/saved" "$state_dir" "$share_dir"; do
+for target in "$service_path" "$config_dir/$config_name" "$firefox_path" "$chrome_dir/$policy_name" "$chromium_dir/$policy_name" "$cli_dir/saveme" "$daemon_dir/saved" "$state_dir" "$share_dir" "$helper_root" "$helper_service"; do
   if [[ -e "$target" || -L "$target" ]]; then
     printf "$print_format" "$existing_message" >&2
     exit "$failure_status"
@@ -81,4 +83,6 @@ if [[ -f "$base_dir/VERSION" ]]; then
   install -d -m "$dir_mode" "$share_dir"
   install -m "$file_mode" "$base_dir/VERSION" "$share_dir/VERSION"
 fi
+source "$auto_script"
+setup_auto "$base_dir"
 printf "$print_format" "$ready_message"

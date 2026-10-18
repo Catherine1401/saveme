@@ -13,7 +13,7 @@ import (
 func sessionSettings(saved config.Preferences, theme, clock, effects string) (ui.Settings, error) {
 	const empty, unknown, separator, list, none = "", "unknown %s %q; choose one of: %s", ", ", ",", "none"
 	const themeKind, clockKind, effectKind = "theme", "clock", "clock effect"
-	settings := ui.Settings{Theme: saved.Theme, Clock: saved.Clock, Effects: saved.Effects, Warning: saved.Warning == nil || *saved.Warning}
+	settings := ui.Settings{Theme: saved.Theme, Clock: saved.Clock, Effects: saved.Effects, Warning: saved.Warning == nil || *saved.Warning, AutoUpdates: saved.AutoUpdates == nil || *saved.AutoUpdates}
 	if settings.Effects == nil && saved.Effect != empty {
 		settings.Effects = []string{}
 		if saved.Effect != none {
@@ -52,6 +52,7 @@ func sessionSettings(saved config.Preferences, theme, clock, effects string) (ui
 // Lưu tuỳ chọn giao diện vào file cấu hình của người dùng.
 func saveSettings(settings ui.Settings) error {
 	warning := settings.Warning
+	automatic := settings.AutoUpdates
 	effects := append([]string{}, settings.Effects...)
-	return config.SavePreferences(config.Preferences{Theme: settings.Theme, Clock: settings.Clock, Effects: effects, Warning: &warning})
+	return config.SavePreferences(config.Preferences{Theme: settings.Theme, Clock: settings.Clock, Effects: effects, Warning: &warning, AutoUpdates: &automatic})
 }

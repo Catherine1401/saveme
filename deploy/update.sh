@@ -5,6 +5,7 @@ update() (
   local readonly owner="${1:?Specify the Linux account that manages saveme.}"
   local readonly root_uid=0 failure=1 script_index=0
   local readonly base="$(cd -- "$(dirname -- "${BASH_SOURCE[$script_index]}")/.." && pwd)"
+  local readonly auto_script="$base/deploy/auto.sh"
   local readonly config=/etc/saveme/config.json service=saved.service
   local readonly cli=/usr/local/bin/saveme daemon=/usr/local/libexec/saved
   local readonly share=/usr/local/share/saveme mode=0755 data_mode=0644
@@ -92,6 +93,8 @@ update() (
   else
     rm -f -- "$share/VERSION"
   fi
+  source "$auto_script"
+  setup_auto "$base"
   committed="$one"
   printf "$format" "$updated_message"
 )

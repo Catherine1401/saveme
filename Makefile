@@ -4,6 +4,7 @@ build:
 	mkdir -p bin
 	go build -trimpath -o bin/saveme ./cmd/saveme
 	go build -trimpath -o bin/saved ./cmd/saved
+	go build -trimpath -o bin/saveme-update ./cmd/saveme-update
 
 test:
 	go test -race ./...
@@ -24,4 +25,4 @@ update:
 	sudo bash deploy/update.sh "$$(id -un)"
 
 clean:
-	rm -f bin/saveme bin/saved
+	rm -f bin/saveme bin/saved bin/saveme-update

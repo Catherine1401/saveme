@@ -34,7 +34,7 @@ func main() {
 	const no = false
 	const checkConfigFlag, checkConfigHelp = "check-config", "Validate configuration without starting the daemon"
 	const checkUpdateFlag, checkUpdateHelp = "check-update", "Validate configuration and require stored state without a lock"
-	const preservedFlag, preservedHelp = "check-preserved-update", "Require valid state before a verified Linux update"
+	const preservedFlag, preservedHelp = "check-preserved-update", "Require valid state before a verified update"
 	const empty = ""
 	const snapshotFlag, snapshotHelp = "update-snapshot", "Save an update commitment snapshot while the service is stopped"
 	const verifyFlag, verifyHelp = "verify-update", "Verify preserved commitment and enforcement against an update snapshot"

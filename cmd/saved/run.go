@@ -49,6 +49,9 @@ func protectedEngine(cfg config.Config, enforcer daemon.Enforcer, clear func() e
 	repo := store.New(cfg.StateDir, store.Immutable{})
 	state, err := repo.Load()
 	if err != nil {
+		if updatePending() {
+			return nil, err
+		}
 		cleanupErr := clear()
 		return nil, errors.Join(err, cleanupErr)
 	}

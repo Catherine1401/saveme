@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"saveme/internal/core"
+	"saveme/internal/update"
 )
 
 type Caller interface {
@@ -33,6 +34,8 @@ const (
 )
 
 type Model struct {
+	observeUpdates func() update.Status
+	updateState    update.Status
 	vim            vimMode
 	appearance     appearance
 	client         Caller
@@ -90,7 +93,7 @@ func New(client Caller, normalizer interface{ Normalize(string) (string, error) 
 }
 
 func (m Model) Init() Cmd {
-	return Batch(m.call(core.Request{Cmd: core.Status}), nextTick(), m.animate())
+	return Batch(m.call(core.Request{Cmd: core.Status}), nextTick(), m.animate(), m.pollUpdates())
 }
 
 func nextTick() Cmd {
@@ -107,6 +110,8 @@ func (m Model) call(request core.Request) Cmd {
 func (m Model) Update(message Msg) (Model, Cmd) {
 	const frames, pulse, zero, one = 8, 6, 0, 1
 	switch value := message.(type) {
+	case updateStatus:
+		m.updateState = value.status
 	case Resize:
 		m.appearance.width, m.appearance.height = value.Width, value.Height
 	case animationFrame:
@@ -121,7 +126,7 @@ func (m Model) Update(message Msg) (Model, Cmd) {
 		if m.busy {
 			return m, nextTick()
 		}
-		return m, Batch(m.call(core.Request{Cmd: core.Status}), nextTick())
+		return m, Batch(m.call(core.Request{Cmd: core.Status}), nextTick(), m.pollUpdates())
 	case reply:
 		return m.receive(value)
 	case charCommit:

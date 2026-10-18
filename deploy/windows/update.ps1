@@ -1,61 +1,56 @@
-# Cập nhật binary saveme; từ chối khi còn lock, khôi phục binary và state nếu service mới không chạy.
+# Nâng cấp bundle có phiên bản bằng giao dịch giữ cam kết; bản source giữ luồng legacy.
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'common.ps1')
+New-Variable -Scope Local -Option ReadOnly -Name commonScript -Value ('common.ps1')
+New-Variable -Scope Local -Option ReadOnly -Name autoScript -Value ('auto.ps1')
+New-Variable -Scope Local -Option ReadOnly -Name versionName -Value ('VERSION')
+New-Variable -Scope Local -Option ReadOnly -Name legacyScript -Value ('legacy.ps1')
+New-Variable -Scope Local -Option ReadOnly -Name incomplete -Value ('Existing installation is incomplete; refusing update.')
+New-Variable -Scope Local -Option ReadOnly -Name launcherName -Value ('saveme.exe')
+New-Variable -Scope Local -Option ReadOnly -Name processName -Value ('saveme')
+New-Variable -Scope Local -Option ReadOnly -Name runningMessage -Value ('Close all saveme windows before this one-time elevated upgrade.')
+New-Variable -Scope Local -Option ReadOnly -Name helperBinary -Value ('bin\saveme-update.exe')
+New-Variable -Scope Local -Option ReadOnly -Name runtimeName -Value ('runtime')
+New-Variable -Scope Local -Option ReadOnly -Name currentName -Value ('current')
+New-Variable -Scope Local -Option ReadOnly -Name helperName -Value ('saveme-updater')
+New-Variable -Scope Local -Option ReadOnly -Name bootstrapPrefix -Value ('saveme-bootstrap-')
+New-Variable -Scope Local -Option ReadOnly -Name directory -Value ('Directory')
+New-Variable -Scope Local -Option ReadOnly -Name binName -Value ('bin')
+New-Variable -Scope Local -Option ReadOnly -Name installFlag -Value ('-install-runtime')
+New-Variable -Scope Local -Option ReadOnly -Name sourceFlag -Value ('-source')
+New-Variable -Scope Local -Option ReadOnly -Name launcherBinary -Value ('bin\saveme.exe')
+New-Variable -Scope Local -Option ReadOnly -Name successMessage -Value ('Updated and enabled automatic updates. Commitments and enforcement verified.')
+. (Join-Path $PSScriptRoot $commonScript)
+. (Join-Path $PSScriptRoot $autoScript)
 $base = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-
 Assert-Administrator
+New-Variable -Scope Local -Option ReadOnly -Name versionPath -Value (Join-Path $base $versionName)
+if (-not (Test-Path $versionPath)) {
+    . (Join-Path $PSScriptRoot $legacyScript)
+    Install-AutoUpdater $base
+    return
+}
 if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) -or -not (Test-Path $ConfigPath)) {
-    throw 'Existing installation is incomplete; refusing update.'
+    throw $incomplete
 }
-$newDaemon = Join-Path $base 'bin\saved.exe'
-Invoke-Daemon $newDaemon @('-check-update', '-config', $ConfigPath)
+New-Variable -Scope Local -Option ReadOnly -Name launcher -Value (Join-Path $ProgramDir $launcherName)
+New-Variable -Scope Local -Option ReadOnly -Name running -Value (@(Get-Process -Name $processName -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $launcher }))
+if ($running.Count) { throw $runningMessage }
+New-Variable -Scope Local -Option ReadOnly -Name helper -Value (Join-Path $base $helperBinary)
+New-Variable -Scope Local -Option ReadOnly -Name runtime -Value (Join-Path $ProgramDir $runtimeName)
+New-Variable -Scope Local -Option ReadOnly -Name current -Value (Join-Path $runtime $currentName)
+if (Get-Service -Name $helperName -ErrorAction SilentlyContinue) { Stop-Service -Name $helperName }
+if (-not (Test-Path $current)) {
+    New-Variable -Scope Local -Option ReadOnly -Name bootstrap -Value (Join-Path $env:TEMP ($bootstrapPrefix + [guid]::NewGuid()))
+    try {
+        New-Item -ItemType $directory -Path (Join-Path $bootstrap $binName) | Out-Null
+        foreach ($binary in $Binaries) { Copy-Item (Join-Path $ProgramDir $binary) (Join-Path $bootstrap $binName) }
+        Copy-Item $helper (Join-Path $bootstrap $helperBinary)
+        Copy-Item (Join-Path $ProgramDir $versionName) (Join-Path $bootstrap $versionName)
+        Invoke-Daemon $helper @($installFlag, $sourceFlag, $bootstrap)
+    } finally { Remove-Item -Recurse -Force $bootstrap -ErrorAction SilentlyContinue }
+}
 Enable-TimeSync
-$backup = Join-Path $env:TEMP ('saveme-update-' + [guid]::NewGuid())
-New-Item -ItemType Directory -Path (Join-Path $backup 'state') | Out-Null
-$stopped = $false
-$stateSaved = $false
-$committed = $false
-try {
-    foreach ($name in $Binaries + @('VERSION')) {
-        $path = Join-Path $ProgramDir $name
-        if (Test-Path $path) { Copy-Item $path $backup }
-    }
-    $stopped = $true
-    Stop-Service -Name $ServiceName
-    Invoke-Daemon $newDaemon @('-check-update', '-config', $ConfigPath)
-    foreach ($name in $StateFiles) {
-        $path = Join-Path $StateDir $name
-        if (Test-Path $path) { Copy-Item $path (Join-Path $backup 'state') }
-    }
-    $stateSaved = $true
-    foreach ($binary in $Binaries) { Copy-Item (Join-Path $base "bin\$binary") $ProgramDir -Force }
-    Start-Service -Name $ServiceName
-    Wait-Ready
-    if (Test-Path (Join-Path $base 'VERSION')) { Copy-Item (Join-Path $base 'VERSION') $ProgramDir -Force }
-    $committed = $true
-    Write-Output 'Updated. Configuration, state and browser policies preserved.'
-}
-finally {
-    if ($stopped -and -not $committed) {
-        Stop-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        foreach ($name in $Binaries + @('VERSION')) {
-            $saved = Join-Path $backup $name
-            if (Test-Path $saved) { Copy-Item $saved $ProgramDir -Force }
-        }
-        # Khôi phục state cũ vì service mới có thể đã ghi định dạng mà bản cũ không đọc được.
-        foreach ($name in $(if ($stateSaved) { $StateFiles } else { @() })) {
-            $path = Join-Path $StateDir $name
-            $saved = Join-Path (Join-Path $backup 'state') $name
-            if (Test-Path $path) { Set-ItemProperty -Path $path -Name IsReadOnly -Value $false }
-            if (Test-Path $saved) {
-                Copy-Item $saved $path -Force
-                Set-ItemProperty -Path $path -Name IsReadOnly -Value $true
-            } elseif (Test-Path $path) {
-                Remove-Item $path -Force
-            }
-        }
-        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        Write-Error 'Update failed; restored previous binaries and state. Inspect saved.log.' -ErrorAction Continue
-    }
-    Remove-Item -Recurse -Force $backup -ErrorAction SilentlyContinue
-}
+Invoke-SystemUpgrade $helper $base
+Copy-Item (Join-Path $base $launcherBinary) $launcher -Force
+Install-AutoUpdater $base
+Write-Output $successMessage

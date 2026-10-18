@@ -2,6 +2,7 @@
 param([Parameter(Mandatory = $true)][string]$User)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
+. (Join-Path $PSScriptRoot 'auto.ps1')
 $base = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $systemSid = 'S-1-5-18'
 $adminSid = 'S-1-5-32-544'
@@ -49,6 +50,7 @@ try {
     Enable-TimeSync
     Start-Service -Name $ServiceName
     Wait-Ready
+    Install-AutoUpdater $base
     $committed = $true
 }
 finally {

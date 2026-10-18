@@ -8,11 +8,12 @@ import (
 
 // Tuỳ chọn giao diện của người dùng; trường rỗng nghĩa là dùng mặc định.
 type Preferences struct {
-	Theme   string   `json:"theme,omitempty"`
-	Clock   string   `json:"clock,omitempty"`
-	Effect  string   `json:"effect,omitempty"`
-	Effects []string `json:"effects"`
-	Warning *bool    `json:"warning,omitempty"`
+	Theme       string   `json:"theme,omitempty"`
+	Clock       string   `json:"clock,omitempty"`
+	Effect      string   `json:"effect,omitempty"`
+	Effects     []string `json:"effects"`
+	AutoUpdates *bool    `json:"auto_updates,omitempty"`
+	Warning     *bool    `json:"warning,omitempty"`
 }
 
 // Thư mục cấu hình saveme của người dùng.

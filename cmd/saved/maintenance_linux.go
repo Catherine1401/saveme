@@ -8,6 +8,10 @@ import (
 
 func updatePending() bool {
 	const path = "/run/saveme-update.lock"
+	const journal = "/usr/local/libexec/saveme/transaction/journal.json"
+	if _, err := os.Stat(journal); !errors.Is(err, os.ErrNotExist) {
+		return true
+	}
 	return updateHeld(path)
 }
 
