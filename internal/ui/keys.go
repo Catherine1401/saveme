@@ -42,13 +42,13 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		if m.screen == durationEdit {
 			return m.back()
 		}
+		const empty = ""
 		if m.screen == mainScreen {
-			m.marked = nil
+			m.marked, m.filter = nil, empty
 		}
 		if m.screen == pickerScreen {
 			return m.cancelPicker(), nil
 		}
-		const empty = ""
 		m.screen, m.selected, m.error = mainScreen, m.position(m.entry), empty
 		return m, nil
 	}

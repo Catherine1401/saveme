@@ -152,3 +152,19 @@ func TestListSortsLockedThenScheduledAndFilters(t *testing.T) {
 		t.Fatal(model.filter)
 	}
 }
+
+func TestEscapeClearsKeptFilter(t *testing.T) {
+	const slash, enter, escape, query, empty = "/", "enter", "esc", "news", ""
+	const free, news, total = "a.com", "news.site", 2
+	model := readyModel()
+	model.status.Entries = []core.EntryStatus{{Domain: free}, {Domain: news}}
+	model, _ = model.Update(runeKey(slash))
+	for _, char := range query {
+		model, _ = model.Update(runeKey(string(char)))
+	}
+	model, _ = model.Update(control(enter))
+	model, _ = model.Update(control(escape))
+	if model.filter != empty || model.searching || len(model.order()) != total {
+		t.Fatal(model.filter, model.searching)
+	}
+}
