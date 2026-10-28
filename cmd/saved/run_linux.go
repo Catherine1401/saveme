@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net"
 
 	"saveme/internal/config"
@@ -9,6 +10,7 @@ import (
 	"saveme/internal/daemon"
 	"saveme/internal/dns"
 	"saveme/internal/enforce"
+	"saveme/internal/meter"
 )
 
 // Server Unix socket chỉ nhận peer có uid được phép.
@@ -41,6 +43,9 @@ func runProtected(ctx context.Context, cfg config.Config) error {
 	}
 	engine.UpdatePending = updatePending
 	resolver := &dns.Resolver{Blocker: filter, Upstreams: []string{proxyAddress}}
+	quotaFirewall := &enforce.QuotaFirewall{}
+	defer quotaFirewall.Clear()
+	startMeter(ctx, engine, resolver, quotaFirewall)
 	service, err := dns.Listen([]string{v4, v6}, resolver)
 	if err != nil {
 		return err
@@ -61,4 +66,23 @@ func runProtected(ctx context.Context, cfg config.Config) error {
 		<-results
 	}
 	return first
+}
+
+// Dựng bộ đo quota; không dựng được thì dùng bộ đo lỗi để giữ chặn đã có và báo ERR_ENFORCEMENT.
+func startMeter(ctx context.Context, engine *daemon.Engine, resolver *dns.Resolver, firewall meter.Firewall) {
+	capture := &meter.Capture{Table: meter.NewTable()}
+	if err := capture.Open(); err != nil {
+		log.Printf("quota meter unavailable: %v", err)
+		engine.SetMeter(daemon.FailedMeter(err))
+		return
+	}
+	measure := &meter.Meter{Table: capture.Table, Source: meter.Diag{}, Firewall: firewall}
+	resolver.Observe = capture.Table.Observe
+	engine.SetMeter(measure)
+	go func() {
+		if err := capture.Run(ctx); err != nil {
+			log.Printf("quota meter stopped: %v", err)
+			measure.Fail(err)
+		}
+	}()
 }

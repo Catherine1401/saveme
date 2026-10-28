@@ -9,6 +9,7 @@ update() (
   local readonly config=/etc/saveme/config.json service=saved.service
   local readonly cli=/usr/local/bin/saveme daemon=/usr/local/libexec/saved
   local readonly share=/usr/local/share/saveme mode=0755 data_mode=0644
+  local readonly unit=/etc/systemd/system/saved.service state_dir=/var/lib/saveme state_files='state.json state.bak.json'
   local readonly lock=/run/saveme-update.lock snapshot_name=commitment.json status_name=status.json
   local readonly backup_pattern=saveme-update.XXXXXXXX zero=0 one=1 format='%s\n'
   local readonly denied='Run with sudo and select a non-root account.'
@@ -37,6 +38,21 @@ update() (
     runuser -u "$owner" -- "$cli" -status >"$backup/$status_name"
     "$backup/checker" -verify-update "$backup/$snapshot_name" -update-status "$backup/$status_name" -config "$config"
   }
+  place_unit() {
+    chattr -i "$unit" 2>/dev/null || true
+    install -m "$data_mode" "$1" "$unit" || return "$failure"
+    chattr +i "$unit" || return "$failure"
+    systemctl daemon-reload
+  }
+  restore_state_files() {
+    local name
+    for name in $state_files; do
+      [[ -f "$backup/state/$name" ]] || continue
+      chattr -i "$state_dir/$name" 2>/dev/null || true
+      cp -- "$backup/state/$name" "$state_dir/$name" || return "$failure"
+      chattr +i "$state_dir/$name" || return "$failure"
+    done
+  }
   rollback() {
     if [[ "$stopped" -eq "$one" && "$committed" -eq "$zero" ]]; then
       if ! systemctl stop "$service"; then
@@ -50,8 +66,10 @@ update() (
       else
         rm -f -- "$share/VERSION"
       fi
+      place_unit "$backup/saved.service" || return "$failure"
       if [[ "$replaced" -eq "$one" ]]; then
-        if ! "$backup/checker" -restore-update "$backup/$snapshot_name" -config "$config"; then
+        # Khôi phục nguyên file state cũ: binary cũ không đọc được state phiên bản mới.
+        if ! restore_state_files; then
           printf "$format" "Rollback could not restore commitment; service stays stopped, recovery files retained at $backup" >&2
           return "$failure"
         fi
@@ -72,6 +90,7 @@ update() (
   cp -- "$cli" "$backup/saveme"
   cp -- "$daemon" "$backup/saved"
   cp -- "$base/bin/saved" "$backup/checker"
+  cp -- "$unit" "$backup/saved.service"
   if [[ -f "$share/VERSION" ]]; then
     cp -- "$share/VERSION" "$backup/VERSION"
     had_version="$one"
@@ -81,9 +100,15 @@ update() (
   stopped="$one"
   systemctl stop "$service"
   "$backup/checker" -update-snapshot "$backup/$snapshot_name" -config "$config"
+  mkdir -- "$backup/state"
+  local state_name
+  for state_name in $state_files; do
+    [[ ! -f "$state_dir/$state_name" ]] || cp -p -- "$state_dir/$state_name" "$backup/state/$state_name"
+  done
   replaced="$one"
   install -m "$mode" "$base/bin/saveme" "$cli"
   install -m "$mode" "$base/bin/saved" "$daemon"
+  place_unit "$base/deploy/saved.service"
   systemctl start "$service"
   ready "$owner" "$cli"
   verify_commitment

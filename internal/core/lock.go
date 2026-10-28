@@ -96,6 +96,9 @@ func (s State) Validate() error {
 				return ErrInvalid
 			}
 		}
+		if err := entry.Quota.Validate(); err != nil {
+			return err
+		}
 		if entry.Lock == nil {
 			continue
 		}

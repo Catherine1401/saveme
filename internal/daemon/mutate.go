@@ -21,6 +21,8 @@ func (e *Engine) mutate(state *core.State, req core.Request) error {
 		}
 		state.Entries = append(state.Entries[:*req.Index], state.Entries[*req.Index+one:]...)
 		return nil
+	case core.ClearQuota:
+		return e.clearQuota(state, req)
 	case core.DeleteWindow:
 		if !validIndex(req.Entry, len(state.Entries)) {
 			return core.ErrInvalid

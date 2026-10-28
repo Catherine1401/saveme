@@ -6,6 +6,9 @@ func (m Model) back() (Model, Cmd) {
 	switch m.screen {
 	case durationEdit:
 		m.screen, m.selected = rangeList, len(durationChoices())
+		if m.quotaMode {
+			m.screen, m.selected, m.quotaMode = quotaList, len(quotaChoices()), false
+		}
 	case mainScreen:
 		return m, Quit
 	case lastWindow:
@@ -21,7 +24,7 @@ func (m Model) back() (Model, Cmd) {
 		if entry, ok := m.current(); ok && scheduled(entry) {
 			m.screen = windowList
 		}
-	case windowList, rangeList:
+	case windowList, rangeList, quotaList:
 		m.screen, m.selected = domainMenu, zero
 	default:
 		m.screen, m.selected = mainScreen, m.position(m.entry)

@@ -97,3 +97,32 @@ func TestUpdateHeldTracksExclusiveLock(t *testing.T) {
 		t.Fatal(held)
 	}
 }
+
+func TestSnapshotCarriesQuotaAndUpdateIsNotBlockedByQuotaAlone(t *testing.T) {
+	const socket, snapshot, suffix, mode = "socket", "snapshot.json", ".lock", 0600
+	root := t.TempDir()
+	cfg := config.Config{Socket: filepath.Join(root, socket), StateDir: t.TempDir()}
+	state := quotaState(120)
+	if err := store.New(cfg.StateDir, nil).Save(state); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.OpenFile(cfg.Socket+suffix, os.O_CREATE|os.O_RDWR, mode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if err := checkUpdate(cfg); err != nil {
+		t.Fatal("quota alone blocked update:", err)
+	}
+	path := filepath.Join(root, snapshot)
+	if err := snapshotUpdate(cfg, path); err != nil {
+		t.Fatal(err)
+	}
+	var loaded core.State
+	if err := readUpdateJSON(path, &loaded); err != nil || !reflect.DeepEqual(state, loaded) || loaded.Entries[0].Quota == nil {
+		t.Fatal(loaded, err)
+	}
+	if err := loaded.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

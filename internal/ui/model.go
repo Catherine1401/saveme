@@ -31,6 +31,7 @@ const (
 	pickerScreen
 	presetList
 	durationEdit
+	quotaList
 )
 
 type Model struct {
@@ -54,6 +55,7 @@ type Model struct {
 	digits         string
 	editingWindow  bool
 	duration       durationInput
+	quotaMode      bool
 	editingDomain  bool
 	domainText     string
 	pending        core.Response
@@ -209,6 +211,8 @@ func (m Model) receive(value reply) (Model, Cmd) {
 		m.screen, m.selected = mainScreen, move(empty, m.selected, len(m.order()))
 	case core.DeleteWindow:
 		m.screen = windowList
+	case core.SetQuota, core.ClearQuota:
+		m.screen, m.selected, m.quotaMode = mainScreen, m.position(m.entry), false
 	}
 	return m, Batch(ClearScreen, m.call(core.Request{Cmd: core.Status}))
 }

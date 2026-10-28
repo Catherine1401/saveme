@@ -103,3 +103,89 @@ func TestPreservedUpdateChecksEveryDomainIndependently(t *testing.T) {
 		t.Fatal(message)
 	}
 }
+
+func quotaState(used int64) core.State {
+	const domain, limit, day, floor = "example.com", 600, "2026-10-09", 110
+	state := core.EmptyState()
+	state.MaxSeen = floor
+	state.Entries = []core.Entry{{Domain: domain, Quota: &core.Quota{LimitSec: limit, UsedSec: used, Day: day}}}
+	return state
+}
+
+func quotaResponse(state core.State, used int64) core.Response {
+	const now, reset = 120, 86400
+	quota := state.Entries[0].Quota
+	remaining := max(quota.LimitSec-used, 0)
+	entry := core.EntryStatus{Domain: state.Entries[0].Domain, Active: remaining == 0, Quota: &core.QuotaStatus{LimitSec: quota.LimitSec, UsedSec: used, RemainingSec: remaining, ResetAt: reset}}
+	return core.Response{OK: true, Now: now, Active: entry.Active, Entries: []core.EntryStatus{entry}}
+}
+
+func TestPreservedUpdateKeepsQuotaAndRejectsLoss(t *testing.T) {
+	const used, target = 300, 0
+	before := quotaState(used)
+	status := quotaResponse(before, used)
+	if err := preservedUpdate(before, before.Clone(), status); err != nil {
+		t.Fatal(err)
+	}
+	grown := before.Clone()
+	grown.Entries[target].Quota.UsedSec = used + 30
+	if err := preservedUpdate(before, grown, quotaResponse(grown, used+30)); err != nil {
+		t.Fatal("usage growth rejected:", err)
+	}
+	cases := map[string]func(*core.State){
+		"quota removed":  func(s *core.State) { s.Entries[target].Quota = nil },
+		"usage reduced":  func(s *core.State) { s.Entries[target].Quota.UsedSec = used - 1 },
+		"limit changed":  func(s *core.State) { s.Entries[target].Quota.LimitSec *= 2 },
+		"day went back":  func(s *core.State) { s.Entries[target].Quota.Day = "2026-10-08" },
+		"quota invented": func(s *core.State) { s.Entries[target].Quota = &core.Quota{LimitSec: 60} },
+	}
+	for name, change := range cases {
+		after := before.Clone()
+		change(&after)
+		if name == "quota invented" {
+			before2 := before.Clone()
+			before2.Entries[target].Quota = nil
+			if preservedUpdate(before2, after, status) == nil {
+				t.Fatal(name)
+			}
+			continue
+		}
+		if preservedUpdate(before, after, status) == nil {
+			t.Fatal(name)
+		}
+	}
+}
+
+func TestPreservedUpdateQuotaDayChangeNeedsTrustedClock(t *testing.T) {
+	const used, target = 300, 0
+	before := quotaState(used)
+	after := before.Clone()
+	after.Entries[target].Quota.Day, after.Entries[target].Quota.UsedSec = "2026-10-10", 0
+	status := quotaResponse(after, 0)
+	if err := preservedUpdate(before, after, status); err != nil {
+		t.Fatal(err)
+	}
+	status.OK, status.Error = false, core.ErrClockUnsync
+	if preservedUpdate(before, after, status) == nil {
+		t.Fatal("day reset accepted with untrusted clock")
+	}
+}
+
+func TestPreservedUpdateExhaustedQuotaMustStayActive(t *testing.T) {
+	const limit, target = 600, 0
+	before := quotaState(limit)
+	status := quotaResponse(before, limit)
+	if err := preservedUpdate(before, before.Clone(), status); err != nil {
+		t.Fatal(err)
+	}
+	status.Entries[target].Active, status.Active = false, false
+	if preservedUpdate(before, before.Clone(), status) == nil {
+		t.Fatal("exhausted quota reported inactive")
+	}
+	if domains := activeDomains(before, quotaResponse(before, limit)); len(domains) != 1 || domains[0] != before.Entries[target].Domain {
+		t.Fatal(domains)
+	}
+	if domains := activeDomains(quotaState(1), quotaResponse(quotaState(1), 1)); len(domains) != 0 {
+		t.Fatal(domains)
+	}
+}

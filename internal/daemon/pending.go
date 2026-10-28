@@ -106,8 +106,27 @@ func (e *Engine) prepare(req core.Request, owner uint64, now time.Time) core.Res
 	return e.pendingResponse(now)
 }
 
+// Dựng pending mới cho lệnh không có lock (quota): gán mã và hạn rồi trả phản hồi chờ xác nhận.
+func (e *Engine) startPending(pending *Pending, now time.Time) core.Response {
+	const lifetime, empty = 60, ""
+	previous := empty
+	if e.pending != nil {
+		previous = e.pending.Code
+	}
+	code, err := e.nextCode(previous)
+	if err != nil {
+		return failure(err, now)
+	}
+	pending.Code, pending.ExpireAt = code, now.Unix()+lifetime
+	e.pending = pending
+	return e.pendingResponse(now)
+}
+
 func (e *Engine) pendingResponse(now time.Time) core.Response {
 	preview := core.Entry{Domain: e.pending.Domain, Lock: e.pending.Lock.Clone()}
+	if e.pending.Op == core.SetQuota {
+		preview = core.Entry{Domain: e.pending.Domain, Quota: &core.Quota{LimitSec: e.pending.Quota}}
+	}
 	response := core.Response{OK: true, Pending: true, Code: e.pending.Code, ExpiresIn: e.pending.ExpireAt - now.Unix(), Failures: e.pending.Failures, Preview: &preview, Now: now.Unix()}
 	for index, item := range e.pending.Targets {
 		const zero = 0
@@ -146,6 +165,9 @@ func (e *Engine) confirm(code string, owner uint64, now time.Time) core.Response
 	}
 	pending := e.pending
 	e.pending = nil
+	if pending.Op == core.SetQuota {
+		return e.confirmQuota(pending, now)
+	}
 	lock := pending.Lock.Clone()
 	if lock.Kind == core.Range {
 		span := lock.EndAt - lock.StartAt

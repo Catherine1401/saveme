@@ -19,3 +19,12 @@ func (l legacyState) migrate() core.State {
 	}
 	return state
 }
+
+// State v2 chỉ thiếu trường quota; nâng version sau khi checksum đã xác minh, lần ghi sau sẽ là v3.
+func upgradeV2(state core.State) core.State {
+	const previousVersion = 2
+	if state.Version == previousVersion {
+		state.Version = core.StateVersion
+	}
+	return state
+}

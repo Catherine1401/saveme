@@ -39,6 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/Catherine1401/saveme/main/install.s
 
 - Daily or 1h–30d locks, per domain
 - Lock several domains at once
+- Daily time quota per domain (Linux): when it is used up, the domain stays blocked until midnight
 - 16 themes, 10 clock styles, 14 effects
 - Linux and Windows
 

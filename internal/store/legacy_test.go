@@ -76,3 +76,40 @@ func TestLegacyStateWithoutLockAndBadChecksum(t *testing.T) {
 		t.Fatal(accepted)
 	}
 }
+
+func TestV2StateUpgradesToV3KeepingLocksAndChecksum(t *testing.T) {
+	const version, zone, domain, start, end, maxSeen, generation, mode = 2, "UTC", "a.com", 60, 120, 7, 1, 0600
+	const primary, wrong = "state.json", "00"
+	old := core.State{Version: version, MaxSeen: maxSeen, Entries: []core.Entry{{Domain: domain,
+		Lock: &core.Lock{Kind: core.Daily, Zone: zone, Windows: []core.Window{{Start: start, End: end}}}}}}
+	sum, err := checksum(old, generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(dir, checksum string) {
+		data, err := json.Marshal(record{Generation: generation, State: old, Checksum: checksum})
+		if err != nil || os.WriteFile(filepath.Join(dir, primary), data, mode) != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := t.TempDir()
+	write(dir, sum)
+	loaded, err := New(dir, nil).Load()
+	if err != nil || loaded.Version != core.StateVersion || loaded.MaxSeen != maxSeen || loaded.Entries[0].Lock == nil || loaded.Entries[0].Lock.Windows[0].End != end {
+		t.Fatal(loaded, err)
+	}
+	broken := t.TempDir()
+	write(broken, wrong)
+	if _, err := New(broken, nil).Load(); err == nil {
+		const accepted = "bad v2 checksum accepted"
+		t.Fatal(accepted)
+	}
+	saved := New(dir, nil)
+	if _, err := saved.Load(); err != nil || saved.Save(loaded) != nil {
+		t.Fatal(err)
+	}
+	again, err := New(dir, nil).Load()
+	if err != nil || again.Version != core.StateVersion {
+		t.Fatal(again, err)
+	}
+}

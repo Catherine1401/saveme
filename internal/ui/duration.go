@@ -69,6 +69,9 @@ func (m Model) saveDuration() (Model, Cmd) {
 		m.error = invalid
 		return m, nil
 	}
+	if m.quotaMode {
+		return m.submit(core.Request{Cmd: core.SetQuota, Entry: &m.entry, Duration: text})
+	}
 	return m.submit(core.Request{Cmd: core.CreateRange, Entry: &m.entry, Targets: m.targets(), Duration: text})
 }
 

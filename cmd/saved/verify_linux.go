@@ -2,7 +2,6 @@ package main
 
 import (
 	"net"
-	"time"
 
 	"saveme/internal/config"
 	"saveme/internal/core"
@@ -44,14 +43,7 @@ func verifyUpdate(cfg config.Config, snapshotPath, statusPath string) error {
 		return err
 	}
 	if status.Active {
-		const zero = 0
-		var domains []string
-		for _, entry := range after.Entries {
-			if entry.Lock != nil && (!status.OK || entry.Lock.Active(time.Unix(status.Now, zero))) {
-				domains = append(domains, entry.Domain)
-			}
-		}
-		return verifyBlockedDNS(domains, cfg.Upstreams)
+		return verifyBlockedDNS(activeDomains(after, status), cfg.Upstreams)
 	}
 	return nil
 }

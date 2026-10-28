@@ -31,7 +31,7 @@ func (m Model) openDomain() (Model, Cmd) {
 	if !ok {
 		return m, nil
 	}
-	m.entry, m.error, m.screen = index, empty, domainMenu
+	m.entry, m.error, m.screen, m.quotaMode = index, empty, domainMenu, false
 	if m.status.Entries[m.entry].Active {
 		m.screen = domainLocked
 	}
@@ -40,12 +40,13 @@ func (m Model) openDomain() (Model, Cmd) {
 }
 
 func (m Model) menuKey(key KeyMsg) (Model, Cmd) {
-	const enter, choices, zero, one = "enter", 2, 0, 1
+	const enter, zero, one = "enter", 0, 1
 	entry, ok := m.current()
 	if !ok {
 		m.screen, m.selected = mainScreen, zero
 		return m, nil
 	}
+	choices := menuChoices()
 	m.selected = move(key.String(), m.selected, choices)
 	digit, err := strconv.Atoi(key.String())
 	choose := key.String() == enter
@@ -54,6 +55,9 @@ func (m Model) menuKey(key KeyMsg) (Model, Cmd) {
 	}
 	if !choose {
 		return m, nil
+	}
+	if m.selected >= quotaMenuIndex {
+		return m.quotaMenuChoice(entry)
 	}
 	if m.selected == zero {
 		if scheduled(entry) {
@@ -77,6 +81,9 @@ func (m Model) menuKey(key KeyMsg) (Model, Cmd) {
 func (m Model) entryLabel(entry core.EntryStatus) string {
 	const zero, locked, remaining, next, unlocked = 0, "● locked", "● locked · %s left", "◷ next lock in %s", "○ unlocked"
 	switch {
+	case quotaUsedUp(entry) && entry.EndAt != zero:
+		const usedUp = "● quota used up · "
+		return usedUp + m.quotaOpens(entry)
 	case entry.Active && entry.EndAt != zero:
 		return fmt.Sprintf(remaining, countdown(entry.EndAt-m.status.Now))
 	case entry.Active:
@@ -125,7 +132,7 @@ func (m Model) mainView() string {
 }
 
 func (m Model) domainMenuView() string {
-	const header, digitKey, digitLabel, enterKey, enterLabel = " %s  %s\n\n", "1–2", "choose", "↵", "select"
+	const header, digitKey, digitLabel, enterKey, enterLabel = " %s  %s\n\n", "1–3", "choose", "↵", "select"
 	const dailyLabel, rangeLabel, timedIndex, reason, zero = "Daily schedule", "Timed lock", 1, "delete the daily schedule first", 0
 	entry, _ := m.current()
 	body := fmt.Sprintf(header, entry.Domain, m.entryLabel(entry))
@@ -140,6 +147,7 @@ func (m Model) domainMenuView() string {
 			body += m.row(index, label)
 		}
 	}
+	body += m.quotaRows(entry)
 	return body + m.keys(keyHint{key: digitKey, label: digitLabel}, keyHint{key: enterKey, label: enterLabel}, moveHint(), backHint())
 }
 

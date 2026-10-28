@@ -185,6 +185,23 @@ duration list; canceling confirmation returns to the entered custom time.
 Custom time also applies to marked domains. Both client and daemon need the
 updated version; older daemons reject custom durations.
 
+### Daily quota
+
+Linux only. Open a domain and choose **Daily quota** (`3`): a quota from 1 minute
+to 24 hours of use per day. Setting it needs the same confirmation code as a lock; removing it does not. The quota counts the
+seconds the domain has an open connection, so opening a tab counts and closing it
+stops the count after the browser drops its idle sockets (about a minute). A quota
+coexists with a schedule or timed lock on the same domain. Each domain counts
+separately, by the server name in the TLS handshake and not by IP address.
+
+The main list shows a bar and the time left (`▓▓▓░░░ 17m left`). When the quota is used up the
+domain is blocked until 00:00 in the daemon time zone, open connections are cut,
+and editing, deleting or changing its quota is refused until then. While time is
+left you can change the quota (`3`, then pick a level) or remove it (`d` on the
+quota screen), or delete the domain freely. Usage and quotas survive restarts and updates. If the meter cannot
+start or stops, saved blocks stay in place and the status reports
+`ERR_ENFORCEMENT`. With an unsynchronized clock the day does not roll over.
+
 ## Limits
 
 Root can bypass the lock. Cached addresses, existing connections, VPNs and direct
@@ -196,6 +213,15 @@ Facebook is an exception: `facebook.com` blocks only itself and
 `www.facebook.com`. Other subdomains remain accessible unless separately listed;
 this does not distinguish feeds from messages by URL. Clock and storage limits
 are described below.
+
+Daily quotas (Linux only) count the seconds a domain has an open TCP connection,
+assigned by the TLS server name. A browser keeps idle sockets for about
+45–60 seconds after a tab closes, so each close can over-count by up to a
+minute. Encrypted Client Hello hides the server name and cannot be counted;
+QUIC (HTTP/3) has no TCP connection, so UDP 443 to a quota domain is blocked to
+force TCP. Facebook, Instagram and Messenger pages were observed without ECH,
+and the Messenger page also contacts `facebook.com` hosts, which count toward a
+`facebook.com` quota when that domain is listed.
 
 ## Lock behavior
 

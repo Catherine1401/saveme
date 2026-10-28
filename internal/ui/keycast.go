@@ -89,6 +89,8 @@ func (m Model) choiceLabel(key string) string {
 	switch {
 	case m.screen == rangeList && digit <= len(durationChoices()):
 		return durationChoices()[digit-one].Label
+	case m.screen == quotaList && digit <= len(quotaChoices()):
+		return quotaChoices()[digit-one].Label
 	case m.screen == presetList && digit <= len(presetChoices()):
 		return presetChoices()[digit-one].label
 	}

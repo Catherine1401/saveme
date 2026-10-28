@@ -14,6 +14,8 @@ const (
 	AddDomain    Command = "add_domain"
 	EditDomain   Command = "edit_domain"
 	DeleteDomain Command = "delete_domain"
+	SetQuota     Command = "set_quota"
+	ClearQuota   Command = "clear_quota"
 )
 
 type InputWindow struct {
@@ -52,12 +54,21 @@ type Response struct {
 }
 
 type EntryStatus struct {
-	Domain  string   `json:"domain"`
-	Active  bool     `json:"active"`
-	Kind    Kind     `json:"kind,omitempty"`
-	Zone    string   `json:"zone,omitempty"`
-	StartAt int64    `json:"start_at,omitempty"`
-	EndAt   int64    `json:"end_at,omitempty"`
-	NextAt  int64    `json:"next_at,omitempty"`
-	Windows []Window `json:"windows,omitempty"`
+	Domain  string       `json:"domain"`
+	Active  bool         `json:"active"`
+	Kind    Kind         `json:"kind,omitempty"`
+	Zone    string       `json:"zone,omitempty"`
+	StartAt int64        `json:"start_at,omitempty"`
+	EndAt   int64        `json:"end_at,omitempty"`
+	NextAt  int64        `json:"next_at,omitempty"`
+	Windows []Window     `json:"windows,omitempty"`
+	Quota   *QuotaStatus `json:"quota,omitempty"`
+}
+
+// QuotaStatus là số liệu quota của một entry; ResetAt là 00:00 kế tiếp theo zone của daemon.
+type QuotaStatus struct {
+	LimitSec     int64 `json:"limit_sec"`
+	UsedSec      int64 `json:"used_sec"`
+	RemainingSec int64 `json:"remaining_sec"`
+	ResetAt      int64 `json:"reset_at"`
 }

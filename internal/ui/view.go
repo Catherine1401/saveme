@@ -85,6 +85,8 @@ func (m Model) screenView() string {
 		return body + m.keys(keyHint{key: digitKey, label: digitLabel}, keyHint{key: enterKey, label: enterLabel}, moveHint(), backHint())
 	case durationEdit:
 		return m.durationView()
+	case quotaList:
+		return m.quotaView()
 	case windowList:
 		return m.windowListView()
 	case windowEdit:
@@ -171,16 +173,18 @@ func (m Model) windowEditView() string {
 }
 
 func (m Model) confirmView() string {
-	const header, daily, rangeFormat, domainFormat, singularNotice, inputFormat = " Confirm lock\n\n", " Daily: %s to %s\n", " Duration: %s\n Start: %s\n Estimated end: %s\n", " Domain: %s, including subdomains; facebook.com blocks only itself and www\n", "\n While the confirmed lock is active\n you cannot edit or delete this domain or its schedule.\n\n Type the code below (no paste):\n", "\n Code: %s — %s remaining\n"
-	const placeholder, separator, codeLength, zero = "_", " ", 4, 0
-	const enterKey, enterLabel, escapeKey, escapeLabel = "↵", "confirm", "esc", "cancel"
+	const header, daily, rangeFormat, domainFormat, singularNotice = " Confirm lock\n\n", " Daily: %s to %s\n", " Duration: %s\n Start: %s\n Estimated end: %s\n", " Domain: %s, including subdomains; facebook.com blocks only itself and www\n", "\n While the confirmed lock is active\n you cannot edit or delete this domain or its schedule.\n\n Type the code below (no paste):\n"
+	const zero = 0
 	if m.pending.Preview == nil {
 		return header
 	}
 	state := m.pending.Preview
 	body := header
-	if state.Lock == nil {
+	if state.Lock == nil && state.Quota == nil {
 		return header
+	}
+	if state.Quota != nil {
+		return m.quotaConfirmView(state)
 	}
 	if state.Lock.Kind == core.Daily {
 		for _, window := range state.Lock.Windows {
@@ -200,9 +204,15 @@ func (m Model) confirmView() string {
 	} else {
 		body += fmt.Sprintf(domainFormat, state.Domain)
 	}
-	body += notice + m.confirmCode()
+	return body + notice + m.codeEntry()
+}
+
+// Phần cuối màn xác nhận dùng chung cho lock và quota: mã cần gõ, ô nhập và phím.
+func (m Model) codeEntry() string {
+	const inputFormat, placeholder, separator, codeLength = "\n Code: %s — %s remaining\n", "_", " ", 4
+	const enterKey, enterLabel, escapeKey, escapeLabel = "↵", "confirm", "esc", "cancel"
 	var slots []string
-	for index := zero; index < codeLength; index++ {
+	for index := range codeLength {
 		char := placeholder
 		if index < len(m.codeInput) {
 			char = string(m.codeInput[index])
@@ -210,7 +220,7 @@ func (m Model) confirmView() string {
 		slots = append(slots, char)
 	}
 	remaining := m.pending.Now + m.pending.ExpiresIn - m.status.Now
-	return body + fmt.Sprintf(inputFormat, strings.Join(slots, separator), countdown(remaining)) + m.keys(keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})
+	return m.confirmCode() + fmt.Sprintf(inputFormat, strings.Join(slots, separator), countdown(remaining)) + m.keys(keyHint{key: enterKey, label: enterLabel}, keyHint{key: escapeKey, label: escapeLabel})
 }
 
 // Gợi ý di chuyển dọc dùng chung cho các danh sách.

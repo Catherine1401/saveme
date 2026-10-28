@@ -32,6 +32,9 @@ func kindText(entry core.EntryStatus) string {
 	const zero, timed, daily, timedFormat, dailyFormat, clock = 0, "Timed lock", "Daily schedule", "Timed lock · %s", "Daily schedule · %s → %s", "15:04"
 	known := entry.StartAt != zero && entry.EndAt != zero
 	switch {
+	case entry.Kind == "" && entry.Quota != nil:
+		const quotaFormat = "Daily quota · %s used up"
+		return fmt.Sprintf(quotaFormat, spanLabel(entry.Quota.LimitSec))
 	case entry.Kind == core.Range && known:
 		return fmt.Sprintf(timedFormat, spanLabel(entry.EndAt-entry.StartAt))
 	case entry.Kind == core.Range:
@@ -118,6 +121,10 @@ func (m Model) lockFacts(entry core.EntryStatus) string {
 func (m Model) lockedView() string {
 	const message, newline, gap, quitKey, footer = "%s is blocked.", "\n", "\n\n", "q", "back"
 	entry, _ := m.current()
+	if entry.Kind == "" && quotaUsedUp(entry) {
+		const used = "%s is out of quota."
+		return m.ink(fmt.Sprintf(used, entry.Domain), toneAccent, true) + newline + m.emphasize(kindText(entry)) + gap + m.lockFacts(entry) + m.keys(keyHint{key: quitKey, label: footer})
+	}
 	head := m.ink(fmt.Sprintf(message, entry.Domain), toneAccent, true) + newline + m.emphasize(kindText(entry)) + gap
 	return head + m.lockFacts(entry) + m.keys(keyHint{key: quitKey, label: footer})
 }

@@ -108,7 +108,7 @@ func decodeRecord(data []byte) (record, error) {
 	if err := verify(state, raw.Generation, raw.Checksum); err != nil {
 		return record{}, err
 	}
-	return record{Generation: raw.Generation, State: state, Checksum: raw.Checksum}, nil
+	return record{Generation: raw.Generation, State: upgradeV2(state), Checksum: raw.Checksum}, nil
 }
 
 func verify(state any, generation uint64, expected string) error {

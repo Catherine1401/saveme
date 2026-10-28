@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -15,6 +16,8 @@ type Blocker interface{ Blocked(string) bool }
 type Resolver struct {
 	Blocker   Blocker
 	Upstreams []string
+	// Observe nhận tên và địa chỉ A/AAAA của câu trả lời hợp lệ; nil thì bỏ qua.
+	Observe func(name string, addrs []netip.Addr)
 }
 
 func (r *Resolver) ServeDNS(writer miekg.ResponseWriter, request *miekg.Msg) {
@@ -36,8 +39,30 @@ func (r *Resolver) ServeDNS(writer miekg.ResponseWriter, request *miekg.Msg) {
 	if err != nil {
 		response = new(miekg.Msg)
 		response.SetRcode(request, miekg.RcodeServerFailure)
+	} else if r.Observe != nil {
+		r.observe(request.Question[zero].Name, response)
 	}
 	writer.WriteMsg(response)
+}
+
+// Gom địa chỉ A/AAAA trong câu trả lời để báo cho Observe.
+func (r *Resolver) observe(name string, response *miekg.Msg) {
+	var addrs []netip.Addr
+	for _, answer := range response.Answer {
+		var raw net.IP
+		switch record := answer.(type) {
+		case *miekg.A:
+			raw = record.A
+		case *miekg.AAAA:
+			raw = record.AAAA
+		}
+		if addr, ok := netip.AddrFromSlice(raw); ok {
+			addrs = append(addrs, addr.Unmap())
+		}
+	}
+	if len(addrs) > 0 {
+		r.Observe(name, addrs)
+	}
 }
 
 func (r *Resolver) resolve(request *miekg.Msg, network string) (*miekg.Msg, error) {

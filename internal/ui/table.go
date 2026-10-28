@@ -84,6 +84,7 @@ func (m Model) domainTable(order []int, width int) string {
 			mark = markOn
 		}
 		status, remaining := m.statusColumns(entry)
+		status, remaining = m.withQuota(entry, status, remaining)
 		body += m.row(position, mark+fmt.Sprintf(columns, domainWidth, truncate(entry.Domain, domainWidth), statusWidth, status, remaining))
 	}
 	if rest := len(order) - top - rows; rest > zero {

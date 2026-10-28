@@ -18,6 +18,7 @@ type Pending struct {
 	Domain   string
 	Targets  []target
 	Lock     core.Lock
+	Quota    int64
 	Code     string
 	ExpireAt int64
 	Failures int
@@ -27,6 +28,7 @@ type Pending struct {
 type Engine struct {
 	ClientCount   func() int
 	UpdatePending func() bool
+	Meter         Meter
 	mu            sync.Mutex
 	state         core.State
 	pending       *Pending
@@ -39,6 +41,7 @@ type Engine struct {
 	health        error
 	storageFault  bool
 	fixedCode     string
+	meterFault    error
 }
 
 func New(state core.State, clock core.Clock, repo Repository, enforcer Enforcer, normalizer Normalizer, zone string) (*Engine, error) {
@@ -86,6 +89,8 @@ func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
 	switch req.Cmd {
 	case core.CreateDaily, core.CreateRange, core.AddWindow, core.EditWindow:
 		return e.prepare(req, owner, now)
+	case core.SetQuota:
+		return e.prepareQuota(req, owner, now)
 	case core.Confirm:
 		return e.confirm(req.Code, owner, now)
 	case core.Cancel:
@@ -120,6 +125,11 @@ func (e *Engine) status(now time.Time) core.Response {
 		response.Error = core.ErrEnforcement
 		response.Message = e.health.Error()
 	}
+	if e.meterFault != nil {
+		response.OK = false
+		response.Error = core.ErrEnforcement
+		response.Message = e.meterFault.Error()
+	}
 	if e.storageFault {
 		response.OK = false
 		response.Error = core.ErrStorage
@@ -137,18 +147,19 @@ func (e *Engine) status(now time.Time) core.Response {
 }
 
 func (e *Engine) entryStatus(entry core.Entry, now time.Time) core.EntryStatus {
-	item := core.EntryStatus{Domain: entry.Domain, Active: e.entryActive(entry, now)}
-	if entry.Lock == nil {
-		return item
+	item := core.EntryStatus{Domain: entry.Domain, Active: e.entryActive(entry, now), Quota: e.quotaStatus(entry.Quota, now)}
+	if entry.Lock != nil {
+		locked := e.lockOn(entry.Lock, now)
+		item.Kind, item.Zone = entry.Lock.Kind, entry.Lock.Zone
+		transition := entry.Lock.Transition(now)
+		if locked && e.clock.Trusted() {
+			item.StartAt, item.EndAt = entry.Lock.WindowStart(now), transition
+		} else if !locked {
+			item.NextAt = transition
+			item.Windows = append([]core.Window{}, entry.Lock.Windows...)
+		}
 	}
-	item.Kind, item.Zone = entry.Lock.Kind, entry.Lock.Zone
-	transition := entry.Lock.Transition(now)
-	if item.Active && e.clock.Trusted() {
-		item.StartAt, item.EndAt = entry.Lock.WindowStart(now), transition
-	} else if !item.Active {
-		item.NextAt = transition
-		item.Windows = append([]core.Window{}, entry.Lock.Windows...)
-	}
+	e.mergeQuotaEnd(&item, entry, now)
 	return item
 }
 
@@ -178,6 +189,10 @@ func (e *Engine) refresh(now time.Time, periodic bool) error {
 			candidate.Entries[index].Lock, expired = nil, true
 		}
 	}
+	usage := e.applyUsage(&candidate, now, periodic)
+	if usage.mustSave && !e.storageFault && e.save(candidate, now) != nil {
+		e.state = candidate // lỗi lưu không được làm mất trạng thái hết quota
+	}
 	if err := e.enforcer.Apply(e.blocked(candidate, now)); err != nil {
 		e.health = core.ErrEnforcement
 		return e.health
@@ -187,14 +202,27 @@ func (e *Engine) refresh(now time.Time, periodic bool) error {
 		return e.health
 	}
 	e.health = nil
-	if expired || (periodic && now.Unix()-e.lastSaved >= saveInterval) {
-		candidate.MaxSeen = now.Unix()
-		if err := e.repo.Save(candidate); err != nil {
-			e.storageFault, e.health = true, core.ErrStorage
+	if periodic {
+		e.cutConnections(e.blocked(candidate, now))
+	}
+	if !usage.mustSave && (expired || (periodic && now.Unix()-e.lastSaved >= saveInterval)) {
+		if e.save(candidate, now) != nil {
 			return e.health
 		}
-		e.state, e.lastSaved = candidate, now.Unix()
+	} else if usage.changed && !usage.mustSave {
+		e.state = candidate
 	}
+	return nil
+}
+
+// Lưu candidate và nhận nó làm state hiện tại; lỗi lưu đặt cờ storageFault.
+func (e *Engine) save(candidate core.State, now time.Time) error {
+	candidate.MaxSeen = now.Unix()
+	if err := e.repo.Save(candidate); err != nil {
+		e.storageFault, e.health = true, core.ErrStorage
+		return e.health
+	}
+	e.state, e.lastSaved = candidate, now.Unix()
 	return nil
 }
 
@@ -204,9 +232,9 @@ func (e *Engine) Tick() error {
 	return e.refresh(e.clock.Now(), true)
 }
 
-// Lock vẫn coi là đang khóa khi đồng hồ chưa tin cậy.
+// Lock vẫn coi là đang khóa khi đồng hồ chưa tin cậy; hết quota cũng là active.
 func (e *Engine) entryActive(entry core.Entry, now time.Time) bool {
-	return entry.Lock != nil && (!e.clock.Trusted() || entry.Lock.Active(now))
+	return e.lockOn(entry.Lock, now) || e.quotaExhausted(entry.Quota, now)
 }
 
 func (e *Engine) blocked(state core.State, now time.Time) []string {
@@ -225,7 +253,7 @@ func (e *Engine) targetActive(req core.Request, owner uint64, now time.Time) boo
 	switch req.Cmd {
 	case core.EditDomain, core.DeleteDomain:
 		target = req.Index
-	case core.CreateDaily, core.AddWindow, core.EditWindow, core.DeleteWindow, core.CreateRange:
+	case core.CreateDaily, core.AddWindow, core.EditWindow, core.DeleteWindow, core.CreateRange, core.SetQuota, core.ClearQuota:
 		target = req.Entry
 	case core.Confirm:
 		if e.pending != nil && e.pending.Owner == owner {

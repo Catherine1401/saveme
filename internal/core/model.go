@@ -23,6 +23,7 @@ type Lock struct {
 type Entry struct {
 	Domain string `json:"domain"`
 	Lock   *Lock  `json:"lock,omitempty"`
+	Quota  *Quota `json:"quota,omitempty"`
 }
 
 type State struct {
@@ -31,7 +32,7 @@ type State struct {
 	MaxSeen int64   `json:"max_seen"`
 }
 
-const StateVersion = 2
+const StateVersion = 3
 
 func EmptyState() State {
 	return State{Version: StateVersion, Entries: []Entry{}}
@@ -47,7 +48,7 @@ func (l *Lock) Clone() *Lock {
 }
 
 func (e Entry) Clone() Entry {
-	return Entry{Domain: e.Domain, Lock: e.Lock.Clone()}
+	return Entry{Domain: e.Domain, Lock: e.Lock.Clone(), Quota: e.Quota.Clone()}
 }
 
 func (s State) Clone() State {

@@ -65,6 +65,8 @@ func (m Model) key(key KeyMsg) (Model, Cmd) {
 		return m.rangeKey(key)
 	case durationEdit:
 		return m.durationKey(key)
+	case quotaList:
+		return m.quotaKey(key)
 	case domainEdit:
 		return m.domainKey(key)
 	case lastWindow:

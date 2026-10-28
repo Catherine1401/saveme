@@ -50,15 +50,18 @@ func (m *Model) vimKey(key KeyMsg) KeyMsg {
 }
 
 func (m Model) listCount() int {
-	const menuChoices, zero = 2, 0
+	const zero = 0
 	switch m.screen {
 	case mainScreen:
 		return len(m.order())
 	case domainMenu:
-		return menuChoices
+		return menuChoices()
 	case rangeList:
 		const custom = 1
 		return len(durationChoices()) + custom
+	case quotaList:
+		const custom = 1
+		return len(quotaChoices()) + custom
 	case settingsScreen:
 		return settingCount
 	case pickerScreen:

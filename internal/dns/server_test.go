@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -187,5 +188,28 @@ func TestDNSFacebookExactHosts(t *testing.T) {
 	filter.Set(nil)
 	if response := exchange(t, server.udp, udp, www, miekg.TypeA); len(response.Answer) != one {
 		t.Fatal(response)
+	}
+}
+
+func TestDNSObserveReportsAnswerAddresses(t *testing.T) {
+	const address, udp, allowed, want = "127.0.0.1:0", "udp", "allowed.test.", "192.0.2.10"
+	remote := upstream(t, false)
+	seen := make(chan string, 1)
+	resolver := &Resolver{Upstreams: []string{remote.udp}, Observe: func(name string, addrs []netip.Addr) {
+		seen <- name + " " + addrs[0].String()
+	}}
+	service, err := Listen([]string{address}, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := runDNS(t, service)
+	exchange(t, server.udp, udp, allowed, miekg.TypeA)
+	select {
+	case got := <-seen:
+		if got != allowed+" "+want {
+			t.Fatal(got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("observer not called")
 	}
 }
