@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -317,7 +318,7 @@ func TestEnforcementFailureRetainsDurableLock(t *testing.T) {
 	preview := f.engine.Handle(core.Request{Cmd: core.CreateRange, Entry: at(target), Duration: duration}, owner)
 	f.enforcer.fail = true
 	response := f.engine.confirm(preview.Code, owner, f.clock.now)
-	if response.Error != core.ErrEnforcement || f.repo.state.Entries[target].Lock == nil || f.engine.state.Entries[target].Lock == nil {
+	if response.Error != core.ErrEnforcement || !strings.Contains(response.Message, "enforcement failure") || f.repo.state.Entries[target].Lock == nil || f.engine.state.Entries[target].Lock == nil {
 		t.Fatal(response)
 	}
 	f.enforcer.fail = false

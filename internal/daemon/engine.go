@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,6 +62,12 @@ func failure(err error, now time.Time) core.Response {
 		code = declared
 	}
 	return core.Response{Error: code, Message: err.Error(), Now: now.Unix()}
+}
+
+// enforcementError keeps the failed enforcer detail in logs and status while
+// still mapping the result to ERR_ENFORCEMENT.
+func enforcementError(err error) error {
+	return fmt.Errorf("%w: %v", core.ErrEnforcement, err)
 }
 
 func (e *Engine) Handle(req core.Request, owner uint64) core.Response {
@@ -174,8 +181,8 @@ func (e *Engine) commit(candidate core.State, now time.Time) error {
 	}
 	e.state, e.lastSaved, e.health = candidate.Clone(), now.Unix(), nil
 	if err := e.enforcer.Apply(e.blocked(candidate, now)); err != nil {
-		e.health = core.ErrEnforcement
-		return core.ErrEnforcement
+		e.health = enforcementError(err)
+		return e.health
 	}
 	return nil
 }
@@ -194,7 +201,7 @@ func (e *Engine) refresh(now time.Time, periodic bool) error {
 		e.state = candidate // lỗi lưu không được làm mất trạng thái hết quota
 	}
 	if err := e.enforcer.Apply(e.blocked(candidate, now)); err != nil {
-		e.health = core.ErrEnforcement
+		e.health = enforcementError(err)
 		return e.health
 	}
 	if e.storageFault {

@@ -2,6 +2,8 @@ package enforce
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/netip"
 	"os/exec"
 	"strings"
@@ -31,7 +33,14 @@ func PowerShell(script string) (string, error) {
 	const shell, noProfile, nonInteractive, policy, bypass, command, timeout = "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", 30 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, shell, noProfile, nonInteractive, policy, bypass, command, script).Output()
+	cmd := exec.CommandContext(ctx, shell, noProfile, nonInteractive, policy, bypass, command, script)
+	output, err := cmd.Output()
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && len(exit.Stderr) > 0 {
+			return string(output), fmt.Errorf("%w: %s", err, strings.TrimSpace(string(exit.Stderr)))
+		}
+	}
 	return string(output), err
 }
 
