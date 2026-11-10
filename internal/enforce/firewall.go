@@ -58,9 +58,18 @@ func (f *Firewall) Apply(blocked []string) error {
 
 // Áp hoặc gỡ cấu hình; khi đang khóa chỉ dựng lại nếu rule bị thiếu hay bị sửa.
 func (f *Firewall) ensure(want bool) error {
-	const expected = "6 1"
+	const expected, cleared = "6 1", "0 0"
 	if !want {
+		// Khi đã biết là trống, chỉ kiểm lại; xoá và xả cache DNS mỗi 30 giây
+		// làm hỏng tick ngay lúc Wi-Fi/Modern Standby vừa thức dậy.
+		if f.known && !f.active {
+			if output, err := f.Run(checkScript()); err == nil && strings.TrimSpace(output) == cleared {
+				f.checked = time.Now()
+				return nil
+			}
+		}
 		if _, err := f.Run(clearScript()); err != nil {
+			f.known = false
 			return err
 		}
 		f.known, f.active, f.checked = true, false, time.Now()

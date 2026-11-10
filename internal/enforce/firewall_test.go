@@ -55,6 +55,24 @@ func TestFirewallAppliesClearsAndSkipsRepeats(t *testing.T) {
 	}
 }
 
+func TestFirewallClearsOnlyStaleRulesWhenUnlocked(t *testing.T) {
+	const stale, cleared, remove, first, third, fourth = "0 1", "0 0", "Remove-NetFirewallRule", 0, 2, 3
+	shell := &fakeShell{check: stale}
+	firewall := newFirewall(shell)
+	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != 1 || !strings.Contains(shell.scripts[first], remove) {
+		t.Fatal(err, shell.scripts)
+	}
+	firewall.checked = firewall.checked.Add(-firewallRecheck())
+	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != 3 || !strings.Contains(shell.scripts[third], remove) {
+		t.Fatal(err, shell.scripts)
+	}
+	shell.check = cleared
+	firewall.checked = firewall.checked.Add(-firewallRecheck())
+	if err := firewall.Apply(nil); err != nil || len(shell.scripts) != 4 || strings.Contains(shell.scripts[fourth], remove) {
+		t.Fatal(err, shell.scripts)
+	}
+}
+
 func TestFirewallRepairsMissingRules(t *testing.T) {
 	const domain, create = "example.com", "New-NetFirewallRule"
 	const missing, healthy, third, three, four = "5 1", "6 1", 3, 4, 5
