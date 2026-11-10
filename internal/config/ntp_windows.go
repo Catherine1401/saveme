@@ -3,13 +3,11 @@ package config
 import (
 	"context"
 	"os/exec"
-	"strings"
 )
 
-// Dịch vụ w32time đang lấy giờ từ nguồn mạng, không phải đồng hồ máy.
+// Dịch vụ w32time đã đồng bộ xong với nguồn mạng, không chỉ là có nguồn.
 func synchronized(ctx context.Context) bool {
-	const tool, query, status, local, free = "w32tm", "/query", "/status", "Local CMOS Clock", "Free-running System Clock"
+	const tool, query, status = "w32tm", "/query", "/status"
 	output, err := exec.CommandContext(ctx, tool, query, status).Output()
-	text := string(output)
-	return err == nil && !strings.Contains(text, local) && !strings.Contains(text, free)
+	return err == nil && trustedWindowsStatus(string(output))
 }
