@@ -8,6 +8,7 @@ import (
 )
 
 func TestDisabledTimedLockVisibleBeforeAndAfterFocus(t *testing.T) {
+	skipWithoutQuota(t)
 	const disabled, reason, focus, narrow, first, none = "(disabled", "delete the daily schedule first", 1, 24, 0, ""
 	for _, plain := range []bool{false, true} {
 		model := readyModel().Appearance(plain, true)

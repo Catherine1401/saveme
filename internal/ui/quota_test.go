@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,15 @@ import (
 )
 
 const quotaDomain = "example.com"
+
+// skipWithoutQuota skips cases that need an enabled quota menu; the menu is
+// disabled on platforms without a connection meter.
+func skipWithoutQuota(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("quota is disabled on this platform")
+	}
+}
 
 func quotaEntry(active bool, used, limit int64, endAt int64) core.EntryStatus {
 	return core.EntryStatus{Domain: quotaDomain, Active: active, EndAt: endAt, Quota: &core.QuotaStatus{LimitSec: limit, UsedSec: used, RemainingSec: max(limit-used, 0), ResetAt: endAt}}
@@ -54,6 +64,7 @@ func openMenu(entry core.EntryStatus) Model {
 }
 
 func TestQuotaMenuSetsQuotaFromPresetAndCustom(t *testing.T) {
+	skipWithoutQuota(t)
 	const three, two, enter = "3", "2", "enter"
 	model, _ := openMenu(core.EntryStatus{Domain: quotaDomain}).Update(runeKey(three))
 	if model.screen != quotaList || !strings.Contains(model.View(), "Daily quota") {
@@ -94,6 +105,7 @@ func TestQuotaChoicesStayWithinOneDay(t *testing.T) {
 }
 
 func TestQuotaScreenRemovesQuotaOnlyWhenPresent(t *testing.T) {
+	skipWithoutQuota(t)
 	const three, remove, menuSummary, removedRow = "3", "d", "▓▓▓▓▓░ 1m of 10m used", "Remove quota"
 	const idle, usedSec, limitSec, noEndAt, firstEntry = false, 60, 600, 0, 0
 	const current, removeHint, submitFailed, noQuotaSubmit = "Current: ▓▓▓▓▓░ 1m of 10m used", "d remove quota", "remove did not submit", "remove submitted without a quota"
@@ -123,6 +135,7 @@ func TestQuotaScreenRemovesQuotaOnlyWhenPresent(t *testing.T) {
 }
 
 func TestQuotaMenuIsDisabledWithReasonWhenClockUnsynced(t *testing.T) {
+	skipWithoutQuota(t)
 	const three, reason = "3", "disabled · clock not synced"
 	model := openMenu(core.EntryStatus{Domain: quotaDomain})
 	model.status.Error = core.ErrClockUnsync
@@ -183,6 +196,7 @@ func TestQuotaMenuLocksQuotaRowWhenUsedUp(t *testing.T) {
 }
 
 func TestQuotaListShowsUsedTodayAndFlagsReachedLevels(t *testing.T) {
+	skipWithoutQuota(t)
 	const idle, limitSec, noEndAt = false, 14400, 0
 	const three, used, current, reached = "3", 7200, "Current:", "2 hours (blocks now)"
 	model, _ := openMenu(quotaEntry(idle, used, limitSec, noEndAt)).Update(runeKey(three))
@@ -195,6 +209,7 @@ func TestQuotaListShowsUsedTodayAndFlagsReachedLevels(t *testing.T) {
 }
 
 func TestQuotaBlockedErrorExplainsHowToFix(t *testing.T) {
+	skipWithoutQuota(t)
 	const three, fix = "3", "wait for time sync, then retry"
 	model := openMenu(core.EntryStatus{Domain: quotaDomain})
 	model.status.Error = core.ErrClockUnsync

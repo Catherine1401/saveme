@@ -21,6 +21,14 @@ func setQuota(t *testing.T, f fixture, duration string) core.Response {
 }
 
 // Dựng fixture với một entry mang quota và lock cho trước.
+// requireQuota skips command-level tests where the platform has no meter.
+func requireQuota(t *testing.T) {
+	t.Helper()
+	if !quotaSupported {
+		t.Skip("quota is not supported on this platform")
+	}
+}
+
 func quotaFixture(t *testing.T, quota *core.Quota, lock *core.Lock) fixture {
 	t.Helper()
 	f := newFixture(t)
@@ -84,6 +92,7 @@ func TestExhaustedQuotaEndsAtLaterOfLockAndReset(t *testing.T) {
 }
 
 func TestSetEditClearQuota(t *testing.T) {
+	requireQuota(t)
 	const owner, target, thirty, sixty, used = 1, 0, "30m", "60m", 120
 	f := newFixture(t)
 	response := setQuota(t, f, thirty)
@@ -106,6 +115,7 @@ func TestSetEditClearQuota(t *testing.T) {
 }
 
 func TestSetQuotaRejectsOutOfRangeAndKeepsLock(t *testing.T) {
+	requireQuota(t)
 	const owner, target, today = 1, 0, "2026-10-09"
 	f := quotaFixture(t, nil, &core.Lock{Kind: core.Daily, Zone: "UTC", Windows: []core.Window{{Start: 60, End: 120}}})
 	for _, value := range []string{"0m", "1441m", "30d", "abc", ""} {
@@ -143,6 +153,7 @@ func TestExhaustedQuotaRejectsEveryChange(t *testing.T) {
 }
 
 func TestSetQuotaStorageFailureDoesNotApply(t *testing.T) {
+	requireQuota(t)
 	const owner, target = 1, 0
 	f := newFixture(t)
 	prepared := f.engine.Handle(core.Request{Cmd: core.SetQuota, Entry: at(target), Duration: "5m"}, owner)
@@ -318,6 +329,7 @@ func TestMeterDoesNotNeedEngineLockDuringTick(t *testing.T) {
 }
 
 func TestSetQuotaNeedsCorrectCodeAndStoresNothingBefore(t *testing.T) {
+	requireQuota(t)
 	const owner, other, target = 1, 2, 0
 	f := newFixture(t)
 	prepared := f.engine.Handle(core.Request{Cmd: core.SetQuota, Entry: at(target), Duration: "5m"}, owner)
@@ -337,6 +349,7 @@ func TestSetQuotaNeedsCorrectCodeAndStoresNothingBefore(t *testing.T) {
 }
 
 func TestSetQuotaCodeExpiresAndCancelDiscards(t *testing.T) {
+	requireQuota(t)
 	const owner, target = 1, 0
 	f := newFixture(t)
 	prepared := f.engine.Handle(core.Request{Cmd: core.SetQuota, Entry: at(target), Duration: "5m"}, owner)
