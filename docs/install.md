@@ -203,11 +203,16 @@ update guards.
 ## Windows
 
 Windows support is experimental. Requirements: Windows 10/11 or Server with PowerShell 5.1,
-an Administrator account to install, an ordinary account to manage locks, the
-Windows Time service synchronized with a network source, and free
-`127.0.0.1:53` and `[::1]:53`. Install and update set Windows Time to start
-automatically and request a sync, because computers outside a domain may never
-start it on their own; uninstall leaves it running.
+an Administrator account to install, an ordinary account to manage locks, a
+clock synchronized with network time, and free `127.0.0.1:53` and `[::1]:53`.
+The daemon trusts a completed Windows Time synchronization or, when Windows
+Time is stuck unsynchronized, a direct SNTP query that shows the local clock
+within five seconds of network time. If neither confirms the clock, locks stay
+active and only adding domains works. If both checks fail, allow outbound UDP
+123 or run `w32tm /resync /force` from an elevated PowerShell. Install and
+update set Windows Time to start automatically and request a sync, because
+computers outside a domain may never start it on their own; uninstall leaves it
+running.
 
 From a normal PowerShell, the bootstrap script asks for administrator rights
 through UAC, downloads the bundle for your architecture, verifies it against

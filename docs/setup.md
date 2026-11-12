@@ -231,9 +231,12 @@ unlock time. A timed lock starts when confirmation succeeds. Each domain holds
 at most one lock; delete a domain's daily schedule before giving it a timed
 lock. Only domains whose lock is active are blocked. While the clock is not
 synchronized with NTP, every stored lock stays active and only adding domains
-is accepted. Updating the binaries is refused while any domain has a stored
-lock. State from earlier versions, which shared one lock across all domains, is
-converted on load by giving each domain a copy of that lock.
+is accepted. On Windows the daemon accepts a completed Windows Time sync or a
+direct SNTP check that shows the local clock within five seconds of network
+time; if neither confirms the clock, locks stay active. Updating the binaries
+is refused while any domain has a stored lock. State from earlier versions,
+which shared one lock across all domains, is converted on load by giving each
+domain a copy of that lock.
 
 Domains are lowercased, converted through IDNA and stripped of a leading `www.`.
 The `facebook.com` entry blocks only the apex and `www.facebook.com`; separately
